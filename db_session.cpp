@@ -226,8 +226,7 @@ void db_session::set_command(db_session::token_list args)
         return;
     }
 
-    exostore::bstring new_bstring(args[1], socket_.get_io_service());
-    db_.set(key, new_bstring);
+    db_.set(key, args[1]);
     if (ex_set || px_set)
     {
         timer_map_[key] = std::make_shared<asio::deadline_timer>(socket_.get_io_service());

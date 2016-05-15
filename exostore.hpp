@@ -3,12 +3,11 @@
 
 #include <string>
 #include <vector>
-#include "binary_string.hpp"
 
 class exostore
 {
 public:
-    typedef binary_string bstring;
+    typedef vector<unsigned char> bstring;
 
     exostore(std::string file_path);
 
