@@ -161,11 +161,11 @@ void db_session::get_command(db_session::token_list args)
     {
         write_bstring(db_.get<exostore::bstring>(key));
     }
-    catch(exostore::key_error&)
+    catch (const exostore::key_error&)
     {
         error_key_does_not_exist(); // Key might have expired after line 155 >_<
     }
-    catch (exostore::type_error&)
+    catch (const exostore::type_error&)
     {
         error_incorrect_type();
     }
@@ -199,8 +199,13 @@ void db_session::set_command(db_session::token_list args)
                         error_syntax_error();
                         return;
                     }
-                    seconds = boost::lexical_cast<unsigned long long>(
+                    seconds = boost::lexical_cast<long long>(
                         vec_to_string(*(++it)));
+                    if (seconds <= 0)
+                    {
+                        error_syntax_error();
+                        return;
+                    }
                     ex_set = true;
                     break;
 
@@ -210,8 +215,13 @@ void db_session::set_command(db_session::token_list args)
                         error_syntax_error();
                         return;
                     }
-                    milliseconds = boost::lexical_cast<unsigned long long>(
+                    milliseconds = boost::lexical_cast<long long>(
                         vec_to_string(*(++it)));
+                    if (milliseconds <= 0)
+                    {
+                        error_syntax_error();
+                        return;
+                    }
                     px_set = true;
                     break;
 
@@ -264,4 +274,71 @@ void db_session::set_command(db_session::token_list args)
         db_.set(key, exostore::bstring(args[1]));
     }
     write_simple_string("OK");
+}
+
+void db_session::getbit_command(db_session::token_list args)
+{
+    if (args.size() != 2)
+    {
+        error_incorrect_number_of_args("GETBIT");
+        return;
+    }
+
+    auto& key = args[0];
+    if (!db_.key_exists(key))
+    {
+        write_integer(0);
+        return;
+    }
+
+    try
+    {
+        auto& value = db_.get<exostore::bstring>(key);
+        auto int_offset = boost::lexical_cast<long long>(
+            vec_to_string(value.bdata())
+        );
+
+        if (int_offset < 0)
+        {
+            error_syntax_error();
+            return;
+        }
+
+        auto byte_offset = int_offset / 8;
+        int bit_offset = int_offset % 8;
+
+        if ((byte_offset + 1) >= value.bdata().size())
+        {
+            write_integer(0);
+            return;
+        }
+
+        auto byte_in_question = value.bdata()[byte_offset + 1];
+        bit_value = (byte_in_question << byte_offset) & 0x80;
+        if (bit_value != 0)
+        {
+            write_integer(1);
+            return;
+        }
+        else
+        {
+            write_integer(0);
+            return;
+        }
+    }
+    catch (const exostore::key_error&)
+    {
+        write_integer(0);
+        return;
+    }
+    catch (const exostore::type_error&)
+    {
+        error_incorrect_type();
+        return;
+    }
+    catch (const boost::bad_lexical_cast&)
+    {
+        error_syntax_error();
+        return;
+    }
 }
