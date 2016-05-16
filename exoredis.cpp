@@ -39,7 +39,7 @@ private:
             if (!ec)
             {
                 auto new_session = std::make_shared<db_session>(
-                    std::move(socket_), db_, session_set_);
+                    std::move(socket_), db_, session_set_, acceptor_.get_io_service());
                 session_set_.add(new_session);
                 new_session->start();
             }
@@ -47,7 +47,7 @@ private:
             do_accept();
         });
     }
-    
+
 
     tcp::acceptor acceptor_;
     tcp::socket socket_;

@@ -4,15 +4,21 @@
 #include <functional>
 #include <iostream>
 #include <sstream>
+#include <chrono>
 #include <boost/tokenizer.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+namespace asio = boost::asio;
 
 db_session::db_session(tcp::socket socket, exostore& db,
-    std::set<db_session::pointer>& session_set)
-    : socket_(std::move(socket), db_(db), session_set_(session_set))
+    std::set<db_session::pointer>& session_set, asio::io_service& io)
+    : socket_(std::move(socket), db_(db), session_set_(session_set)),
+    expiry_timer_(io)
 {
+    expiry_timer_.expires_from_now(boost::posix_time::seconds(2));
+    expiry_timer_.async_wait(std::bind(&db_session::handle_timer,
+        shared_from_this(), asio::placeholders::error));
 }
 
 // Read a line of data..
@@ -28,6 +34,15 @@ void db_session::stop()
 {
     socket_->close();
     session_set_.erase(shared_from_this());
+}
+
+// Expires the database keys.
+void db_session::handle_timer(boost::system::error_code ec)
+{
+    db_.expire_keys();
+    expiry_timer_.expires_from_now(boost::posix_time::seconds(2));
+    expiry_timer_.async_wait(std::bind(&db_session::handle_timer,
+        shared_from_this(), asio::placeholders::error));
 }
 
 // Parses the command and calls it.
@@ -135,6 +150,8 @@ void db_session::get_command(db_session::token_list args)
     }
 
     auto& key = args[0];
+
+    // Throwing exceptions is expensive. Better to check using a bool if we can.
     if (!db_.key_exists(key))
     {
         error_key_does_not_exist();
@@ -144,7 +161,11 @@ void db_session::get_command(db_session::token_list args)
     {
         write_bstring(db_.get<exostore::bstring>(key));
     }
-    catch(...) // TODO: Change this type
+    catch(exostore::key_error&)
+    {
+        error_key_does_not_exist(); // Key might have expired after line 155 >_<
+    }
+    catch (exostore::type_error&)
     {
         error_incorrect_type();
     }
@@ -162,9 +183,10 @@ void db_session::set_command(db_session::token_list args)
     bool px_set = false;
     bool nx_set = false;
     bool xx_set = false;
-    unsigned long long milliseconds = 0;
-    unsigned long long seconds = 0;
+    long long milliseconds = 0;
+    long long seconds = 0;
 
+    // Parse the command and set flags.
     try
     {
         for (auto it = args.begin() + 3; it != args.end(); it++)
@@ -226,27 +248,17 @@ void db_session::set_command(db_session::token_list args)
         return;
     }
 
-    db_.set(key, args[1]);
-    if (ex_set || px_set)
+    if (ex_set)
     {
-        timer_map_[key] = std::make_shared<asio::deadline_timer>(socket_.get_io_service());
-        auto timer = timer_map_[key];
-        if (ex_set)
-        {
-            timer->expires_from_now(boost::posix_time::seconds(seconds));
-        }
-        else if (px_set)
-        {
-            timer->expires_from_now(boost::posix_time::milliseconds(milliseconds));
-        }
-
-        timer->async_wait(
-            [this, timer, key](const boost::system::error_code& ec)
-            {
-                db_.remove(key);
-                timer_map_.erase(key);
-            }
-        );
+        db_.set(key, exostore::bstring(args[1], 1000 * seconds));
+    }
+    else if (px_set)
+    {
+        db_.set(key, exostore::bstring(args[1], milliseconds));
+    }
+    else
+    {
+        db_.set(key, exostore::bstring(args[1]));
     }
     write_simple_string("OK");
 }

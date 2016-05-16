@@ -7,7 +7,6 @@
 #include <set>
 #include <vector>
 #include <boost/asio.hpp>
-#include <boost/unordered_map.hpp>
 #include "exostore.hpp"
 
 namespace asio = boost::asio;
@@ -21,13 +20,15 @@ public:
     typedef std::shared_ptr<db_session> pointer;
 
     db_session(tcp::socket socket, exostore& db,
-        std::set<db_session::pointer>& session_set);
+        std::set<db_session::pointer>& session_set, asio::io_service& io);
 
     void start();
     void stop();
 
 private:
     typedef std::vector<std::vector<unsigned char>> token_list;
+
+    void handle_timer(boost::system::error_code ec);
 
     void handle_command_line(boost::system::error_code ec, std::size_t bytes_transferred);
     void do_write();
@@ -67,8 +68,7 @@ private:
     asio::streambuf read_buffer_;
     asio::streambuf write_buffer_;
     std::vector<unsigned char> response_string_;
-    boost::unordered_map<std::vector<unsigned char>, std::shared_ptr<asio::deadline_timer>>
-        timer_map_;
+    asio::deadline_timer expiry_timer_;
 };
 
 #endif
