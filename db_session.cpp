@@ -232,6 +232,9 @@ void db_session::set_command(db_session::token_list args)
                     }
                     nx_set = true;
                     break;
+                default:
+                    error_syntax_error();
+                    return;
             }
         }
     }
