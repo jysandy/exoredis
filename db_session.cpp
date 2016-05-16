@@ -313,7 +313,7 @@ void db_session::getbit_command(db_session::token_list args)
             return;
         }
 
-        auto byte_in_question = value.bdata()[byte_offset + 1];
+        unsigned char byte_in_question = value.bdata()[byte_offset + 1];
         bit_value = (byte_in_question << byte_offset) & 0x80;
         if (bit_value != 0)
         {
@@ -340,5 +340,54 @@ void db_session::getbit_command(db_session::token_list args)
     {
         error_syntax_error();
         return;
+    }
+}
+
+void db_session::setbit_command(db_session::token_list args)
+{
+    if (args.size() != 3)
+    {
+        error_incorrect_number_of_args("SETBIT");
+        return;
+    }
+
+    auto& key = args[0];
+    if (!db_.key_exists(key))
+    {
+        db_.set(key, exostore::bstring());
+    }
+
+    try
+    {
+        auto& value = db_.get<exostore::bstring>(key);
+        auto int_offset = boost::lexical_cast<long long>(
+            vec_to_string(args[1]);
+        );
+
+        if (int_offset < 0)
+        {
+            error_syntax_error();
+            return;
+        }
+
+        auto bit_value = boost::lexical_cast<int>(
+            vec_to_string(args[2]);
+        );
+
+        if (bit_value != 0 || bit_value != 1)
+        {
+            error_syntax_error();
+            return;
+        }
+
+        auto byte_offset = int_offset / 8;
+        int bit_offset = int_offset % 8;
+
+        if ((byte_offset + 1) >= value.bdata().size())
+        {
+            value.bdata().resize(byte_offset + 1);
+        }
+
+
     }
 }
