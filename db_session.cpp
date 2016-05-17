@@ -99,7 +99,7 @@ void db_session::handle_write(boost::system::error_code ec)
 void db_session::call(db_session::token_list command_tokens)
 {
     // Stringify the first token, which is the command name.
-    std::string command_name = vec_to_string(command_tokens[0]);
+    std::string command_name = toupper_string(vec_to_string(command_tokens[0]));
 
     db_session::token_list command_args(
         command_tokens.begin() + 1,
@@ -191,7 +191,7 @@ void db_session::set_command(db_session::token_list args)
     {
         for (auto it = args.begin() + 3; it != args.end(); it++)
         {
-            switch (vec_to_string(*it))
+            switch (toupper_string(vec_to_string(*it)))
             {
                 case "EX":
                     seconds = boost::lexical_cast<long long>(

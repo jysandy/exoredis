@@ -3,8 +3,20 @@
 
 #include <vector>
 #include <string>
+#include <locale>
 
-std::string vec_to_string(vector<unsigned char> v)
+std::string toupper_string(const std::string& input)
+{
+    std::locale loc;
+    std::string output;
+    for (auto c: input)
+    {
+        output += std::toupper(c, loc);
+    }
+    return output;
+}
+
+std::string vec_to_string(const vector<unsigned char>& v)
 {
     return std::string(v.begin(), v.end());
 }
