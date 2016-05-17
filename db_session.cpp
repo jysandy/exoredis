@@ -222,7 +222,7 @@ void db_session::set_command(db_session::token_list args)
                 case "NX":
                     nx_set = true;
                     break;
-                    
+
                 default:
                     error_syntax_error();
                     return;
@@ -408,4 +408,20 @@ void db_session::setbit_command(db_session::token_list args)
         error_syntax_error();
         return;
     }
+}
+
+void db_session::zadd_command(db_session::token_list args)
+{
+    if (args.size() < 3)
+    {
+        error_incorrect_number_of_args("SET");
+        return;
+    }
+
+    bool nx_set = false;
+    bool xx_set = false;
+    bool ch_set = false;
+    bool incr_set = false;
+
+    // Parse the command and set flags.
 }
