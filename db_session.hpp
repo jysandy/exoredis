@@ -37,6 +37,7 @@ private:
 
     // TODO all these
     void write_bstring(const exostore::bstring&);
+    void write_bstring(const std::string&);
     void write_simple_string(const std::string&);
     void write_nullbulk();
     void write_integer(const long long&);

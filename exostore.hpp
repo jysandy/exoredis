@@ -5,11 +5,14 @@
 #include <vector>
 #include <stdexcept>
 #include "binary_string.hpp"
+#include "sorted_set.hpp"
 
 class exostore
 {
 public:
     typedef binary_string bstring;
+    typedef sorted_set zset;
+
     class key_error: public std::runtime_error
     {
     public:

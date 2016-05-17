@@ -339,15 +339,9 @@ void db_session::setbit_command(db_session::token_list args)
         return;
     }
 
-    auto& key = args[0];
-    if (!db_.key_exists(key))
-    {
-        db_.set(key, exostore::bstring());
-    }
 
     try
     {
-        auto& value = db_.get<exostore::bstring>(key);
         auto int_offset = boost::lexical_cast<long long>(
             vec_to_string(args[1]);
         );
@@ -367,6 +361,13 @@ void db_session::setbit_command(db_session::token_list args)
             error_syntax_error();
             return;
         }
+
+        auto& key = args[0];
+        if (!db_.key_exists(key))
+        {
+            db_.set(key, exostore::bstring());
+        }
+        auto& value = db_.get<exostore::bstring>(key);
 
         auto byte_offset = int_offset / 8;
         int bit_offset_from_right = 7 - (int_offset % 8);
@@ -424,4 +425,126 @@ void db_session::zadd_command(db_session::token_list args)
     bool incr_set = false;
 
     // Parse the command and set flags.
+    if (args.size() > 3)    // There aren't any flags otherwise
+    {
+        for (auto it = args.begin() + 1; it != args.end() - 2; it++)
+        {
+            switch (toupper_string(vec_to_string(*it)))
+            {
+                case "NX":
+                    nx_set = true;
+                    break;
+
+                case "XX":
+                    xx_set = true;
+                    break;
+
+                case "CH":
+                    ch_set = true;
+                    break;
+
+                case "INCR":
+                    incr_set = true;
+                    break;
+
+                default:
+                    error_syntax_error();
+                    return;
+            }
+        }
+    }
+
+    if (nx_set && xx_set)
+    {
+        error_syntax_error();
+        return;
+    }
+
+    auto it = args.end() - 2;
+    auto score_bstring = *it;
+    it++;
+    auto& member = *it;
+
+    double score = 0.0;
+    try
+    {
+        score = boost::lexical_cast<double>(
+            vec_to_string(score_bstring)
+        );
+    }
+    catch (const boost::bad_lexical_cast&)
+    {
+        error_syntax_error();
+        return;
+    }
+
+    int return_value = 0;
+    auto& key = args[0];
+
+    // Create the sorted set if key doesn't exist.
+    if (!db_.key_exists(key))
+    {
+        if (xx_set)
+        {
+            // Nothing to do here. Bail out early without creating a set.
+            write_nullbulk();
+            return;
+        }
+        db_.set(key, exostore::zset());
+    }
+
+    try
+    {
+        auto& accessed_set = db_.get<exostore::zset>(key);
+
+        if (nx_set && accessed_set.contains(member)
+            || xx_set && !accessed_set.contains(member))
+        {
+            write_nullbulk();
+            return;
+        }
+
+        if (incr_set)
+        {
+            // Doesn't matter if ch is set or not in this case.
+            current_score = accessed_set.get_score(member);
+            new_score = current_score + score;
+            accessed_set.add(member, new_score);
+            write_bstring(boost::lexical_cast<std::string>(new_score));
+            return;
+        }
+        else
+        {
+            if (accessed_set.contains_element_score(member, score))
+            {
+                // Nothing added or changed.
+                write_integer(0);
+                return;
+            }
+
+            if (accessed_set.contains(member) && !ch_set)
+            {
+                accessed_set.add(member, score);
+                write_integer(0);
+                return;
+            }
+            else
+            {
+                /*
+                Either the member is contained and ch is set (write 1),
+                or the member is not contained (write 1 regardless
+                of ch).
+                */
+                accessed_set.add(member, score);
+                write_integer(1);
+                return;
+            }
+        }
+    }
+    catch (const exostore::type_error&)
+    {
+        error_incorrect_type();
+        return;
+    }
+
 }
