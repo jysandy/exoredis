@@ -305,7 +305,7 @@ void db_session::getbit_command(db_session::token_list args)
         }
 
         auto byte_offset = int_offset / 8;
-        int bit_offset = int_offset % 8;
+        int bit_offset_from_right = 7 - (int_offset % 8);
 
         if ((byte_offset + 1) >= value.bdata().size())
         {
@@ -313,8 +313,9 @@ void db_session::getbit_command(db_session::token_list args)
             return;
         }
 
-        unsigned char byte_in_question = value.bdata()[byte_offset + 1];
-        bit_value = (byte_in_question << byte_offset) & 0x80;
+        unsigned char byte_in_question = value.bdata()[byte_offset];
+        bit_value = (byte_in_question << (7 - bit_offset_from_right))
+            & static_cast<unsigned char>(0x80u);
         if (bit_value != 0)
         {
             write_integer(1);
@@ -381,13 +382,43 @@ void db_session::setbit_command(db_session::token_list args)
         }
 
         auto byte_offset = int_offset / 8;
-        int bit_offset = int_offset % 8;
+        int bit_offset_from_right = 7 - (int_offset % 8);
 
         if ((byte_offset + 1) >= value.bdata().size())
         {
-            value.bdata().resize(byte_offset + 1);
+            value.bdata().resize(byte_offset + 1, static_cast<unsigned char>(0));
         }
 
+        unsigned char byte_in_question = value.bdata()[byte_offset];
+        int return_value = (byte_in_question << (7 - bit_offset_from_right))
+            & static_cast<unsigned char>(0x80u);
 
+        if (bit_value == 1)
+        {
+            byte_in_question |= static_cast<unsigned char>(1u) << bit_offset_from_right;
+        }
+        else
+        {
+            byte_in_question &= ~(static_cast<unsigned char>(1u) << bit_offset_from_right);
+        }
+
+        value.bdata()[byte_offset] = byte_in_question;
+
+        write_integer(return_value);
+    }
+    catch (const exostore::key_error&)  // This shouldn't happen, I set the key earlier
+    {
+        error_key_does_not_exist();
+        return;
+    }
+    catch (const exostore::type_error&)
+    {
+        error_incorrect_type();
+        return;
+    }
+    catch (const boost::bad_lexical_cast&)
+    {
+        error_syntax_error();
+        return;
     }
 }

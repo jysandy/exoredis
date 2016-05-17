@@ -46,9 +46,9 @@ private:
     // A command is responsible for calling do_write to write the response.
     void get_command(token_list args);
     void set_command(token_list args);
-    // TODO all these
     void getbit_command(token_list args);
     void setbit_command(token_list args);
+    // TODO all these
     void zadd_command(token_list args);
     void zcard_command(token_list args);
     void zrange_command(token_list args);
