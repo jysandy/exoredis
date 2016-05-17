@@ -8,7 +8,7 @@ class sorted_set
 public:
     typedef vector<unsigned char> element_type;
 
-    sorted_set();
+    sorted_set();   // Default score is 0
 
     bool contains(const element_type&) const;
     bool contains_element_score(const element_type& el, double score) const;
