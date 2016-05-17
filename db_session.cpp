@@ -194,11 +194,6 @@ void db_session::set_command(db_session::token_list args)
             switch (vec_to_string(*it))
             {
                 case "EX":
-                    if (px_set)
-                    {
-                        error_syntax_error();
-                        return;
-                    }
                     seconds = boost::lexical_cast<long long>(
                         vec_to_string(*(++it)));
                     if (seconds <= 0)
@@ -210,11 +205,6 @@ void db_session::set_command(db_session::token_list args)
                     break;
 
                 case "PX":
-                    if (ex_set)
-                    {
-                        error_syntax_error();
-                        return;
-                    }
                     milliseconds = boost::lexical_cast<long long>(
                         vec_to_string(*(++it)));
                     if (milliseconds <= 0)
@@ -226,22 +216,13 @@ void db_session::set_command(db_session::token_list args)
                     break;
 
                 case "XX":
-                    if (nx_set)
-                    {
-                        error_syntax_error();
-                        return;
-                    }
                     xx_set = true;
                     break;
 
                 case "NX":
-                    if (xx_set)
-                    {
-                        error_syntax_error();
-                        return;
-                    }
                     nx_set = true;
                     break;
+                    
                 default:
                     error_syntax_error();
                     return;
@@ -249,6 +230,12 @@ void db_session::set_command(db_session::token_list args)
         }
     }
     catch (const boost::bad_lexical_cast&)
+    {
+        error_syntax_error();
+        return;
+    }
+
+    if ((px_set && ex_set) || (nx_set && xx_set))
     {
         error_syntax_error();
         return;
