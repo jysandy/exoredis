@@ -37,6 +37,8 @@ public:
     void set(const vector<unsigned char>& key, const T& value);
 
     void expire_keys();
+
+    void save();
 };
 
 #endif

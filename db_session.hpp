@@ -20,15 +20,13 @@ public:
     typedef std::shared_ptr<db_session> pointer;
 
     db_session(tcp::socket socket, exostore& db,
-        std::set<db_session::pointer>& session_set, asio::io_service& io);
+        std::set<db_session::pointer>& session_set);
 
     void start();
     void stop();
 
 private:
     typedef std::vector<std::vector<unsigned char>> token_list;
-
-    void handle_timer(boost::system::error_code ec);
 
     void handle_command_line(boost::system::error_code ec, std::size_t bytes_transferred);
     void do_write();
@@ -49,8 +47,8 @@ private:
     void set_command(token_list args);
     void getbit_command(token_list args);
     void setbit_command(token_list args);
-    // TODO all these
     void zadd_command(token_list args);
+    // TODO all these
     void zcard_command(token_list args);
     void zrange_command(token_list args);
     void save_command(token_list args);
@@ -70,7 +68,6 @@ private:
     asio::streambuf read_buffer_;
     asio::streambuf write_buffer_;
     std::vector<unsigned char> response_string_;
-    asio::deadline_timer expiry_timer_;
 };
 
 #endif

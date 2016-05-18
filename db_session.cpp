@@ -7,18 +7,13 @@
 #include <chrono>
 #include <boost/tokenizer.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace asio = boost::asio;
 
 db_session::db_session(tcp::socket socket, exostore& db,
     std::set<db_session::pointer>& session_set, asio::io_service& io)
-    : socket_(std::move(socket), db_(db), session_set_(session_set)),
-    expiry_timer_(io)
+    : socket_(std::move(socket), db_(db), session_set_(session_set))
 {
-    expiry_timer_.expires_from_now(boost::posix_time::seconds(2));
-    expiry_timer_.async_wait(std::bind(&db_session::handle_timer,
-        shared_from_this(), asio::placeholders::error));
 }
 
 // Read a line of data..
@@ -34,15 +29,6 @@ void db_session::stop()
 {
     socket_->close();
     session_set_.erase(shared_from_this());
-}
-
-// Expires the database keys.
-void db_session::handle_timer(boost::system::error_code ec)
-{
-    db_.expire_keys();
-    expiry_timer_.expires_from_now(boost::posix_time::seconds(2));
-    expiry_timer_.async_wait(std::bind(&db_session::handle_timer,
-        shared_from_this(), asio::placeholders::error));
 }
 
 // Parses the command and calls it.
