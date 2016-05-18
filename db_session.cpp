@@ -544,12 +544,42 @@ void db_session::zcard_command(db_session::token_list args)
 
     try
     {
-        auto& accessed_set = db_.get<exostore::sorted_set>(args[0]);
+        auto& accessed_set = db_.get<exostore::zset>(args[0]);
         write_integer(accessed_set.size());
     }
     catch (const exostore::key_error& )
     {
         write_integer(0);
+    }
+    catch (const exostore::type_error& )
+    {
+        error_incorrect_type();
+    }
+}
+
+void db_session::zcount_command(db_session::token_list args)
+{
+    if (args.size() != 3)
+    {
+        error_incorrect_number_of_args("ZCOUNT");
+        return;
+    }
+
+    auto& key = args[0];
+    try
+    {
+        double min = boost::lexical_cast<double>(
+            vec_to_string(args[1])
+        );
+        double max = boost::lexical_cast<double>(
+            vec_to_string(args[2])
+        );
+        auto& accessed_set = db_.get<exostore::zset>(key);
+        write_integer(accessed_set.count(min, max));
+    }
+    catch (const boost::bad_lexical_cast& )
+    {
+        error_syntax_error();
     }
     catch (const exostore::type_error& )
     {

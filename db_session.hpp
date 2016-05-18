@@ -50,6 +50,7 @@ private:
     void zadd_command(token_list args);
     // TODO all these
     void zcard_command(token_list args);
+    void zcount_command(token_list args);
     void zrange_command(token_list args);
     void save_command(token_list args);
 

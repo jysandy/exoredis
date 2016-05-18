@@ -19,6 +19,9 @@ public:
 
     // Adds the element or updates the score if it exists.
     void add(const element_type& element, double score);
+
+    // Number of elements with min <= score <= max.
+    std::size_t count(double min, double max) const;
 };
 
 #endif
