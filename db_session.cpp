@@ -532,5 +532,27 @@ void db_session::zadd_command(db_session::token_list args)
         error_incorrect_type();
         return;
     }
+}
 
+void db_session::zcard_command(db_session::token_list args)
+{
+    if (args.size() != 1)
+    {
+        error_incorrect_number_of_args("ZCARD");
+        return;
+    }
+
+    try
+    {
+        auto& accessed_set = db_.get<exostore::sorted_set>(args[0]);
+        write_integer(accessed_set.size());
+    }
+    catch (const exostore::key_error& )
+    {
+        write_integer(0);
+    }
+    catch (const exostore::type_error& )
+    {
+        error_incorrect_type();
+    }
 }

@@ -27,6 +27,7 @@ public:
 
     exostore(std::string file_path);
 
+    // Should expire a key if needed.
     bool key_exists(const vector<unsigned char>& key);
 
     // Should throw if the key does not exist or if it expires.
