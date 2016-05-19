@@ -6,7 +6,10 @@
 class sorted_set_key
 {
 public:
-    sorted_set_key(double score, std::vector<unsigned char>* ptr);    
+    sorted_set_key(double score, std::vector<unsigned char>* ptr);
+
+    double score() const;
+    const std::vector<unsigned char>& member() const;
 };
 
 #endif

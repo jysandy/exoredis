@@ -7,6 +7,7 @@
 #include <chrono>
 #include <boost/tokenizer.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/clamp.hpp>
 
 namespace asio = boost::asio;
 
@@ -613,6 +614,68 @@ void db_session::zrange_command(db_session::token_list args)
     try
     {
         auto& accessed_set = db_.get<exostore::zset>(key);
+        auto start = boost::lexical_cast<long long>(
+            vec_to_string(args[1])
+        );
+        auto end = boost::lexical_cast<long long>(
+            vec_to_string(args[2])
+        );
 
+        // Convert negative args to zero-based offsets.
+        auto set_length = accessed_set.size();
+        if (start < 0)
+        {
+            start = set_length + start;
+        }
+
+        if (end < 0)
+        {
+            end = set_length + end;
+        }
+
+        // Clamp both.
+        start = boost::algorithm::clamp(start, 0, set_length - 1);
+        end = boost::algorithm::clamp(end, 0, set_length - 1);
+
+        if (start > end)
+        {
+            write_array(std::vector<std::vector<unsigned char>>());
+            return;
+        }
+
+        auto iterators = accessed_set.element_range(start, end);
+        std::vector<std::vector<unsigned char>> array_output;
+
+        for (auto it = iterators.first; it != iterators.second;
+            it++)
+        {
+            array_output.emplace_back(it->member());
+            if (withscores)
+            {
+                array_output.emplace_back(string_to_vec(
+                    boost::lexical_cast<std::string>(score)));
+            }
+        }
+
+        write_array(array_output);
     }
+    catch (const exostore::type_error&)
+    {
+        error_incorrect_type();
+    }
+    catch (const boost::bad_lexical_cast&)
+    {
+        error_syntax_error();
+    }
+}
+
+void db_session::save_command(db_session::token_list args)
+{
+    if (args.size() != 0)
+    {
+        error_incorrect_number_of_args("SAVE");
+    }
+
+    db_.save();
+    write_simple_string("OK");
 }

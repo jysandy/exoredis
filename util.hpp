@@ -16,6 +16,11 @@ std::string toupper_string(const std::string& input)
     return output;
 }
 
+std::vector<unsigned char> string_to_vec(const std::string& s)
+{
+    return std::vector<unsigned char>(s.begin(), s.end());
+}
+
 std::string vec_to_string(const vector<unsigned char>& v)
 {
     return std::string(v.begin(), v.end());
