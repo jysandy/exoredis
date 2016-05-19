@@ -39,6 +39,7 @@ private:
     void write_simple_string(const std::string&);
     void write_nullbulk();
     void write_integer(const long long&);
+    void write_array(const std::vector<std::vector<unsigned char>>&)
 
 
     // Commands

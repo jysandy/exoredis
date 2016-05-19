@@ -586,3 +586,33 @@ void db_session::zcount_command(db_session::token_list args)
         error_incorrect_type();
     }
 }
+
+void db_session::zrange_command(db_session::token_list args)
+{
+    if (args.size() < 3 || args.size() > 4)
+    {
+        error_incorrect_number_of_args("ZRANGE");
+        return;
+    }
+
+    bool withscores = false;
+    if (args.size() == 4
+        && toupper_string(vec_to_string(args[3])) == 'WITHSCORES')
+    {
+        withscores = true;
+    }
+
+    auto& key = args[0];
+    if (!db_.key_exists(key))
+    {
+        // Write an empty array.
+        write_array(std::vector<std::vector<unsigned char>>());
+        return;
+    }
+
+    try
+    {
+        auto& accessed_set = db_.get<exostore::zset>(key);
+
+    }
+}

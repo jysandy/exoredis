@@ -3,11 +3,13 @@
 
 #include <vector>
 #include <cstddef>
+#include "sorted_set_key.hpp"
 
 class sorted_set
 {
 public:
     typedef vector<unsigned char> element_type;
+    typedef sorted_set_key key_type;
 
     sorted_set();   // Default score is 0
 
