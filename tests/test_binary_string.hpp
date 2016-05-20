@@ -8,7 +8,7 @@
 #include "../binary_string.hpp"
 #include "../util.hpp"
 
-BOOST_AUTO_TEST_CASE(test_without_expiry)
+BOOST_AUTO_TEST_CASE(test_bstring_without_expiry)
 {
     std::string contents = "some contents";
     auto bstr = binary_string(string_to_vec(contents));
@@ -18,7 +18,7 @@ BOOST_AUTO_TEST_CASE(test_without_expiry)
     BOOST_CHECK_EQUAL(contents, vec_to_string(bstr.bdata()));
 }
 
-BOOST_AUTO_TEST_CASE(test_with_expiry)
+BOOST_AUTO_TEST_CASE(test_bstring_with_expiry)
 {
     std::string contents = "some contents";
     auto bstr = binary_string(string_to_vec(contents), 200);
