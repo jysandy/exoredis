@@ -33,13 +33,13 @@ private:
     void handle_write(boost::system::error_code ec);
     void call(token_list command_tokens);
 
-    // TODO all these
     void write_bstring(const exostore::bstring&);
     void write_bstring(const std::string&);
-    void write_simple_string(const std::string&);
+    void write_bstring(const std::vector<unsigned char>&);
     void write_nullbulk();
+    void write_simple_string(const std::string&);
     void write_integer(const long long&);
-    void write_array(const std::vector<std::vector<unsigned char>>&)
+    void write_array(const std::vector<std::vector<unsigned char>>&);
 
 
     // Commands
@@ -56,7 +56,6 @@ private:
 
     // Errors
     // Write error messages as responses
-    // TODO all these
     void error_unknown_command(std::string command_name);
     void error_incorrect_number_of_args(std::string command_name);
     void error_key_does_not_exist();
@@ -68,7 +67,7 @@ private:
     std::set<db_session::pointer>& session_set_;
     asio::streambuf read_buffer_;
     asio::streambuf write_buffer_;
-    std::vector<unsigned char> response_string_;
+    std::ostream out_stream_;
 };
 
 #endif

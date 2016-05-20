@@ -13,7 +13,8 @@ namespace asio = boost::asio;
 
 db_session::db_session(tcp::socket socket, exostore& db,
     std::set<db_session::pointer>& session_set, asio::io_service& io)
-    : socket_(std::move(socket), db_(db), session_set_(session_set))
+    : socket_(std::move(socket), db_(db), session_set_(session_set)),
+      out_stream_(&(this->write_buffer_))
 {
 }
 
@@ -63,7 +64,7 @@ void db_session::handle_command_line(boost::system::error_code ec,
 // Writes the response...
 void db_session::do_write()
 {
-    asio::async_write(socket_, asio::buffer(write_buffer_),
+    asio::async_write(socket_, write_buffer_,
         std::bind(&db_session::handle_write, shared_from_this(),
             asio::placeholders::error));
 }
@@ -678,4 +679,89 @@ void db_session::save_command(db_session::token_list args)
 
     db_.save();
     write_simple_string("OK");
+}
+
+// Writes out binary data as a bulk string.
+void db_session::write_bstring(const exostore::bstring& bstr)
+{
+    write_bstring(bstr.bdata());
+}
+
+void db_session::write_bstring(const std::string& str)
+{
+    write_bstring(string_to_vec(str));
+}
+
+void db_session::write_bstring(const std::vector<unsigned char>& bdata)
+{
+    out_stream_ << '$' << bdata.size() << "\r\n";
+    out_stream_.write(bdata.data(), bdata.size());
+    out_stream_ << "\r\n" << std::flush;
+    do_write();
+}
+
+void db_session::write_nullbulk()
+{
+    out_stream_ << "$-1\r\n" << std::flush;
+    do_write();
+}
+
+void db_session::write_simple_string(const std::string& str)
+{
+    out_stream_ << "+" << str << "\r\n" << std::flush;
+    do_write();
+}
+
+void db_session::write_integer(const long long& integer)
+{
+    out_stream_ << ":" << integer << "\r\n" << std::flush;
+    do_write();
+}
+
+void db_session::write_array(const std::vector<std::vector<unsigned char>>&
+    array_to_write)
+{
+    out_stream_ << "*" << array_to_write.size() << "\r\n";
+    for (auto& bdata: array_to_write)
+    {
+        out_stream_ << '$' << bdata.size() << "\r\n";
+        out_stream_.write(bdata.data(), bdata.size());
+        out_stream_ << "\r\n";
+    }
+    out_stream_ << std::flush;
+    do_write();
+}
+
+// Error messages
+
+void error_unknown_command(std::string command_name)
+{
+    out_stream_ << "-ERR Unknown command " << command_name << "\r\n"
+        << std::flush;
+    do_write();
+}
+
+void error_incorrect_number_of_args(std::string command_name)
+{
+    out_stream_ << "-ERR Incorrect number of args for " << command_name
+        << "\r\n" << std::flush;
+    do_write();
+}
+
+void error_key_does_not_exist()
+{
+    out_stream_ << "-ERR Key does not exist\r\n";
+    do_write();
+}
+
+void error_incorrect_type()
+{
+    out_stream_ << "-ERR Incorrect type\r\n";
+    do_write();
+}
+
+void error_syntax_error()
+{
+    out_stream_ << "-ERR Syntax error\r\n";
+    do_write();
 }
