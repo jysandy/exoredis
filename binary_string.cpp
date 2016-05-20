@@ -12,7 +12,7 @@ binary_string::binary_string(const std::vector<unsigned char>& bdata)
 
 binary_string::binary_string(const std::vector<unsigned char>& bdata,
     long long expiry_milliseconds)
-    : bdata_(bdata)
+    : bdata_(bdata), expiry_set_(true)
 {
     expiry_time_ = chrono::system_clock::now()
         + chrono::milliseconds(expiry_milliseconds);
