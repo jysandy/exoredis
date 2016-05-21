@@ -4,3 +4,4 @@
 
 #include "test_binary_string.hpp"
 #include "test_sorted_set_key.hpp"
+#include "test_sorted_map_key.hpp"
