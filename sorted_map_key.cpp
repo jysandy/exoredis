@@ -4,12 +4,12 @@
 
 
 bool sorted_map_key::equal_to::operator()(const sorted_map_key& left,
-    const sorted_map_key& right)
+    const sorted_map_key& right) const
 {
     return left.member() == right.member();
 }
 
-std::size_t sorted_map_key::hash::operator()(const sorted_map_key& hashee)
+std::size_t sorted_map_key::hash::operator()(const sorted_map_key& hashee) const
 {
     return boost::hash_value(hashee.member());
 }
@@ -19,7 +19,7 @@ sorted_map_key sorted_map_key::create_owned(const std::vector<unsigned char>& v)
     return sorted_map_key(v);
 }
 
-sorted_map_key sorted_map_key::create_unowned(std::vector<unsigned char>* v)
+sorted_map_key sorted_map_key::create_unowned(const std::vector<unsigned char>* v)
 {
     return sorted_map_key(v);
 }
@@ -30,7 +30,7 @@ sorted_map_key::sorted_map_key(const std::vector<unsigned char>& v)
 {
 }
 
-sorted_map_key::sorted_map_key(std::vector<unsigned char>* v)
+sorted_map_key::sorted_map_key(const std::vector<unsigned char>* v)
     : unowned_member_ptr_(v)    // member_ptr_ will be nullptr
 {
 }
@@ -56,4 +56,5 @@ sorted_set_key sorted_map_key::make_set_key(double score) const
     else
     {
         return sorted_set_key(score, member_ptr_.get());
-    }}
+    }
+}

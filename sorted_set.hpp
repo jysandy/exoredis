@@ -12,18 +12,20 @@
 class sorted_set
 {
 public:
-    typedef vector<unsigned char> member_type;
+    typedef std::vector<unsigned char> member_type;
     typedef sorted_set_key set_key_type;
     typedef sorted_map_key map_key_type;
-    typedef std::set<set_key_type> set_type;
+    typedef std::set<set_key_type, set_key_type::compare> set_type;
     typedef boost::unordered_map<map_key_type, double,
         map_key_type::hash, map_key_type::equal_to> map_type;
 
-    sorted_set();   // Default score is 0
+    sorted_set();
 
     bool contains(const member_type&) const;
-    bool contains_element_score(const member_type& el, double score) const;
+    bool contains_element_score(const member_type& m,
+        double score) const;
 
+    // Returns 0 if member is not present.
     double get_score(const member_type&) const;
 
     // Note that the size of the unordered_map and the size of the set

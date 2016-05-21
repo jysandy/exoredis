@@ -8,10 +8,15 @@
 // Returns true if left is 'less' than right, i.e., left should appear before
 // right in the sorted set.
 bool sorted_set_key::compare::operator()(const sorted_set_key& left,
-    const sorted_set_key& right)
+    const sorted_set_key& right) const
 {
     if (left.score_ == right.score_)
     {
+        if (left.lex_largest_)
+        {
+            return false;
+        }
+
         if (right.member_ptr_ == nullptr)           // Left may be null
         {
             return false;
@@ -34,13 +39,13 @@ bool sorted_set_key::compare::operator()(const sorted_set_key& left,
     }
 }
 
-sorted_set_key::sorted_set_key(double score)
-    : score_(score), member_ptr_(nullptr)
+sorted_set_key::sorted_set_key(double score, double lex_largest)
+    : score_(score), member_ptr_(nullptr), lex_largest_(lex_largest)
 {
 }
 
-sorted_set_key::sorted_set_key(double score, std::vector<unsigned char>* ptr)
-    : score_(score), member_ptr_(ptr)
+sorted_set_key::sorted_set_key(double score, const std::vector<unsigned char>* ptr)
+    : score_(score), member_ptr_(ptr), lex_largest_(false)
 {
 }
 
