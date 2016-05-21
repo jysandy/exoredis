@@ -90,6 +90,18 @@ BOOST_FIXTURE_TEST_CASE(test_sorted_set_element_range, F)
         actual.push_back(it->member());
     }
     BOOST_CHECK(actual == expected2);
+
+    auto nv = string_to_vec("some con");
+    zset.add(nv, 1.0);
+    std::vector<std::vector<unsigned char>> expected3{nv, v1, v4, v2, v3};
+    its = zset.element_range(0, 5);
+    actual.clear();
+    for (auto it = its.first; it != its.second; it++)
+    {
+        actual.push_back(it->member());
+    }
+    BOOST_CHECK(actual == expected3);
+
 }
 
 #endif
