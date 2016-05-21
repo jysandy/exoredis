@@ -29,4 +29,14 @@ BOOST_AUTO_TEST_CASE(test_smk_hash)
     BOOST_CHECK_NE(hasher(smk1), hasher(smk3));
 }
 
+BOOST_AUTO_TEST_CASE(test_smk_make_set_key)
+{
+    auto v1 = string_to_vec("some content");
+    auto smk1 = sorted_map_key::create_owned(v1);
+    auto smk2 = sorted_map_key::create_unowned(&v1);
+    auto ssk = smk1.make_set_key(2.0);
+    BOOST_CHECK(ssk.member() == smk1.member());
+    BOOST_CHECK(ssk.member() == smk2.member());
+}
+
 #endif

@@ -5,6 +5,8 @@
 #include <memory>
 #include <cstddef>
 
+#include "sorted_set_key.hpp"
+
 /*
 Key of the boost::unordered_map of the sorted set. Contians either an
 owning or a non-owning pointer to a member.
@@ -28,13 +30,16 @@ public:
 
     const std::vector<unsigned char>& member() const;
 
+    // Used to make a set key with the correct member pointer.
+    sorted_set_key make_set_key(double score) const;
+
 private:
     sorted_map_key(std::vector<unsigned char>*);
     sorted_map_key(const std::vector<unsigned char>&);
 
 
     std::vector<unsigned char>* unowned_member_ptr_;
-    std::unique_ptr<std::vector<unsigned char>> member_ptr_;
+    std::shared_ptr<std::vector<unsigned char>> member_ptr_;
 };
 
 

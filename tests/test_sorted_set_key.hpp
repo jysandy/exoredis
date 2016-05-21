@@ -18,6 +18,7 @@ BOOST_AUTO_TEST_CASE(test_ssk_compare)
     auto k2 = sorted_set_key(2.0, &v1);
     auto k3 = sorted_set_key(2.0, &v2);
     auto k4 = sorted_set_key(3.0, &v1);
+    auto k5 = k4.with_new_score(2.0);
     auto comparer = sorted_set_key::compare();
 
     BOOST_CHECK(comparer(k1, k2));
@@ -25,6 +26,9 @@ BOOST_AUTO_TEST_CASE(test_ssk_compare)
     BOOST_CHECK(comparer(k2, k4));
     BOOST_CHECK(!comparer(k1, k1));
     BOOST_CHECK(!comparer(k2, k2));
+    // k2 and k5 should be equal
+    BOOST_CHECK(!comparer(k2, k5));
+    BOOST_CHECK(!comparer(k5, k2));
 }
 
 BOOST_AUTO_TEST_CASE(test_ssk_accessors)

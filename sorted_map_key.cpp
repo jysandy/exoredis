@@ -46,3 +46,14 @@ const std::vector<unsigned char>& sorted_map_key::member() const
         return *member_ptr_;
     }
 }
+
+sorted_set_key sorted_map_key::make_set_key(double score) const
+{
+    if (unowned_member_ptr_ != nullptr)
+    {
+        return sorted_set_key(score, unowned_member_ptr_);
+    }
+    else
+    {
+        return sorted_set_key(score, member_ptr_.get());
+    }}

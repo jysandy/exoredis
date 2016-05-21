@@ -58,3 +58,8 @@ const std::vector<unsigned char>& sorted_set_key::member() const
 
     return *member_ptr_;
 }
+
+sorted_set_key sorted_set_key::with_new_score(double score) const
+{
+    return sorted_set_key(score, member_ptr_);
+}
