@@ -6,3 +6,4 @@
 #include "test_sorted_set_key.hpp"
 #include "test_sorted_map_key.hpp"
 #include "test_sorted_set.hpp"
+#include "test_exostore.hpp"
