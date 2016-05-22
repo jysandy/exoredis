@@ -48,6 +48,14 @@ BOOST_FIXTURE_TEST_CASE(test_exostore_key_exists, exo_fixture)
     BOOST_CHECK(!db.key_exists(k4));
 }
 
+BOOST_FIXTURE_TEST_CASE(test_exostore_is_type, exo_fixture)
+{
+    BOOST_CHECK(db.is_type<exostore::bstring>(k1));
+    BOOST_CHECK(db.is_type<exostore::bstring>(k2));
+    BOOST_CHECK(db.is_type<exostore::zset>(k3));
+    BOOST_CHECK(!db.is_type<exostore::zset>(k2));
+}
+
 BOOST_FIXTURE_TEST_CASE(test_exostore_get, exo_fixture)
 {
     auto& val = db.get<exostore::bstring>(k1);

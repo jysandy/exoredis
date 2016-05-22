@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <typeinfo>
 #include <boost/unordered_map.hpp>
 #include <boost/any.hpp>
 #include "binary_string.hpp"
@@ -32,6 +33,9 @@ public:
     // Should expire a key if needed.
     bool key_exists(const std::vector<unsigned char>& key);
 
+    template <typename T>
+    bool is_type(const std::vector<unsigned char>& key);
+
     // Should throw if the key does not exist or if it expires.
     template <typename T>
     T& get(const std::vector<unsigned char>& key);
@@ -50,6 +54,16 @@ private:
     std::string db_path_;
     boost::unordered_map<std::vector<unsigned char>, boost::any> map_;
 };
+
+template <typename T>
+bool exostore::is_type(const std::vector<unsigned char>& key)
+{
+    if (!key_exists(key))
+    {
+        return false;
+    }
+    return map_[key].type() == typeid(T);
+}
 
 template <typename T>
 T& exostore::get(const std::vector<unsigned char>& key)
