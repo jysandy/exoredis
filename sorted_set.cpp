@@ -82,7 +82,7 @@ std::size_t sorted_set::count(double min, double max) const
 }
 
 std::pair<sorted_set::set_type::const_iterator, sorted_set::set_type::const_iterator>
-    sorted_set::element_range(std::size_t start, std::size_t end)
+    sorted_set::element_range(std::size_t start, std::size_t end) const
 {
     auto first = set_.cbegin();
     std::advance(first, start);

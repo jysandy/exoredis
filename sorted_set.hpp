@@ -41,7 +41,7 @@ public:
     // Iterators to the passed indices. Both indices are inclusive.
     // The end iterator though is exclusive.
     std::pair<set_type::const_iterator, set_type::const_iterator>
-        element_range(std::size_t start, std::size_t end);
+        element_range(std::size_t start, std::size_t end) const;
 
 private:
     set_type set_;
