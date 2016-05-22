@@ -230,7 +230,7 @@ void db_session::set_command(db_session::token_list args)
     }
 
     auto& key = args[0];
-    if ((db.key_exists(key) && nx_set) || (!db.key_exists(key) && xx_set))
+    if ((db_.key_exists(key) && nx_set) || (!db_.key_exists(key) && xx_set))
     {
         write_nullbulk();
         return;
@@ -360,9 +360,9 @@ void db_session::setbit_command(db_session::token_list args)
         auto byte_offset = int_offset / 8;
         int bit_offset_from_right = 7 - (int_offset % 8);
 
-        if ((byte_offset + 1) >= value.bdata().size())
+        if (byte_offset >= value.bdata().size())
         {
-            value.bdata().resize(byte_offset + 1, static_cast<unsigned char>(0));
+            value.bdata().resize(byte_offset, static_cast<unsigned char>(0));
         }
 
         unsigned char byte_in_question = value.bdata()[byte_offset];
