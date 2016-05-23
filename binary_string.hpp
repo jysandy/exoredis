@@ -15,6 +15,7 @@ public:
         long long expiry_milliseconds);
 
     const std::vector<unsigned char>& bdata() const;
+    std::vector<unsigned char>& bdata();
     bool has_expired() const;
 private:
     bool expiry_set_;

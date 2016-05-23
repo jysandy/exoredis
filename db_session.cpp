@@ -8,12 +8,13 @@
 #include <boost/tokenizer.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/clamp.hpp>
+#include <boost/bind.hpp>
 
 namespace asio = boost::asio;
 
 db_session::db_session(tcp::socket socket, exostore& db,
-    std::set<db_session::pointer>& session_set, asio::io_service& io)
-    : socket_(std::move(socket), db_(db), session_set_(session_set)),
+    std::set<db_session::pointer>& session_set)
+    : socket_(std::move(socket)), db_(db), session_set_(session_set),
       out_stream_(&(this->write_buffer_))
 {
 }
@@ -22,19 +23,19 @@ db_session::db_session(tcp::socket socket, exostore& db,
 void db_session::start()
 {
     asio::async_read_until(socket_, read_buffer_, "\r\n",
-        std::bind(&db_session::handle_command_line, shared_from_this(),
-            asio::placeholders::error, asio::placeholders::bytes_transferred))
+        boost::bind(&db_session::handle_command_line, shared_from_this(),
+            asio::placeholders::error, asio::placeholders::bytes_transferred));
 }
 
 // Shuts down and removes this session from the pool.
 void db_session::stop()
 {
-    socket_->close();
+    socket_.close();
     session_set_.erase(shared_from_this());
 }
 
 // Parses the command and calls it.
-void db_session::handle_command_line(boost::system::error_code ec,
+void db_session::handle_command_line(const boost::system::error_code& ec,
     std::size_t bytes_transferred)
 {
     if (!ec)
@@ -50,7 +51,7 @@ void db_session::handle_command_line(boost::system::error_code ec,
         boost::tokenizer<
             boost::escaped_list_separator<unsigned char>,
             std::vector<unsigned char>::const_iterator,
-            std::vector<unsigned char>> tok(v, sep);
+            std::vector<unsigned char>> tok(command_string, sep);
         std::vector<std::vector<unsigned char>> command_tokens(
             tok.begin(), tok.end());
         call(command_tokens);
@@ -65,7 +66,7 @@ void db_session::handle_command_line(boost::system::error_code ec,
 void db_session::do_write()
 {
     asio::async_write(socket_, write_buffer_,
-        std::bind(&db_session::handle_write, shared_from_this(),
+        boost::bind(&db_session::handle_write, shared_from_this(),
             asio::placeholders::error));
 }
 
@@ -95,35 +96,41 @@ void db_session::call(db_session::token_list command_tokens)
     );
 
     // Dispatch on command name.
-    switch (command_name)
+    if (command_name == "GET")
     {
-        case "GET":
-            get_command(command_args);
-            break;
-        case "SET":
-            set_command(command_args);
-            break;
-        case "GETBIT":
-            getbit_command(command_args);
-            break;
-        case "SETBIT":
-            setbit_command(command_args);
-            break;
-        case "ZADD":
-            zadd_command(command_args);
-            break;
-        case "ZCARD":
-            zcard_command(command_args);
-            break;
-        case "ZRANGE":
-            zrange_command(command_args);
-            break;
-        case "SAVE":
-            save_command(command_args);
-            break;
-        default:
-            error_unknown_command(command_name);
-            break;
+        get_command(command_args);
+    }
+    else if (command_name == "SET")
+    {
+        set_command(command_args);
+    }
+    else if (command_name == "GETBIT")
+    {
+        getbit_command(command_args);
+    }
+    else if (command_name == "SETBIT")
+    {
+        setbit_command(command_args);
+    }
+    else if (command_name == "ZADD")
+    {
+        zadd_command(command_args);
+    }
+    else if (command_name == "ZCARD")
+    {
+        zcard_command(command_args);
+    }
+    else if (command_name == "ZRANGE")
+    {
+        zrange_command(command_args);
+    }
+    else if (command_name == "SAVE")
+    {
+        save_command(command_args);
+    }
+    else
+    {
+        error_unknown_command(command_name);
     }
 }
 
@@ -179,41 +186,40 @@ void db_session::set_command(db_session::token_list args)
     {
         for (auto it = args.begin() + 3; it != args.end(); it++)
         {
-            switch (toupper_string(vec_to_string(*it)))
+            auto option = toupper_string(vec_to_string(*it));
+            if (option == "EX")
             {
-                case "EX":
-                    seconds = boost::lexical_cast<long long>(
-                        vec_to_string(*(++it)));
-                    if (seconds <= 0)
-                    {
-                        error_syntax_error();
-                        return;
-                    }
-                    ex_set = true;
-                    break;
-
-                case "PX":
-                    milliseconds = boost::lexical_cast<long long>(
-                        vec_to_string(*(++it)));
-                    if (milliseconds <= 0)
-                    {
-                        error_syntax_error();
-                        return;
-                    }
-                    px_set = true;
-                    break;
-
-                case "XX":
-                    xx_set = true;
-                    break;
-
-                case "NX":
-                    nx_set = true;
-                    break;
-
-                default:
+                seconds = boost::lexical_cast<long long>(
+                    vec_to_string(*(++it)));
+                if (seconds <= 0)
+                {
                     error_syntax_error();
                     return;
+                }
+                ex_set = true;
+            }
+            else if (option == "PX")
+            {
+                milliseconds = boost::lexical_cast<long long>(
+                    vec_to_string(*(++it)));
+                if (milliseconds <= 0)
+                {
+                    error_syntax_error();
+                    return;
+                }
+                px_set = true;
+            }
+            else if (option == "XX")
+            {
+                xx_set = true;
+            }
+            else if (option == "NX")
+            {
+                nx_set = true;
+            }
+            else
+            {
+                error_syntax_error();
             }
         }
     }
@@ -289,7 +295,7 @@ void db_session::getbit_command(db_session::token_list args)
         }
 
         unsigned char byte_in_question = value.bdata()[byte_offset];
-        bit_value = (byte_in_question << (7 - bit_offset_from_right))
+        unsigned char bit_value = (byte_in_question << (7 - bit_offset_from_right))
             & static_cast<unsigned char>(0x80u);
         if (bit_value != 0)
         {
@@ -331,7 +337,7 @@ void db_session::setbit_command(db_session::token_list args)
     try
     {
         auto int_offset = boost::lexical_cast<long long>(
-            vec_to_string(args[1]);
+            vec_to_string(args[1])
         );
 
         if (int_offset < 0)
@@ -341,7 +347,7 @@ void db_session::setbit_command(db_session::token_list args)
         }
 
         auto bit_value = boost::lexical_cast<int>(
-            vec_to_string(args[2]);
+            vec_to_string(args[2])
         );
 
         if (bit_value != 0 || bit_value != 1)
@@ -417,27 +423,26 @@ void db_session::zadd_command(db_session::token_list args)
     {
         for (auto it = args.begin() + 1; it != args.end() - 2; it++)
         {
-            switch (toupper_string(vec_to_string(*it)))
+            auto option = toupper_string(vec_to_string(*it));
+            if (option == "NX")
             {
-                case "NX":
-                    nx_set = true;
-                    break;
-
-                case "XX":
-                    xx_set = true;
-                    break;
-
-                case "CH":
-                    ch_set = true;
-                    break;
-
-                case "INCR":
-                    incr_set = true;
-                    break;
-
-                default:
-                    error_syntax_error();
-                    return;
+                nx_set = true;
+            }
+            else if (option == "XX")
+            {
+                xx_set = true;
+            }
+            else if (option == "CH")
+            {
+                ch_set = true;
+            }
+            else if (option == "INCR")
+            {
+                incr_set = true;
+            }
+            else
+            {
+                error_syntax_error();
             }
         }
     }
@@ -495,8 +500,8 @@ void db_session::zadd_command(db_session::token_list args)
         if (incr_set)
         {
             // Doesn't matter if ch is set or not in this case.
-            current_score = accessed_set.get_score(member);
-            new_score = current_score + score;
+            double current_score = accessed_set.get_score(member);
+            double new_score = current_score + score;
             accessed_set.add(member, new_score);
             write_bstring(boost::lexical_cast<std::string>(new_score));
             return;
@@ -599,7 +604,7 @@ void db_session::zrange_command(db_session::token_list args)
 
     bool withscores = false;
     if (args.size() == 4
-        && toupper_string(vec_to_string(args[3])) == 'WITHSCORES')
+        && toupper_string(vec_to_string(args[3])) == "WITHSCORES")
     {
         withscores = true;
     }
@@ -654,7 +659,7 @@ void db_session::zrange_command(db_session::token_list args)
             if (withscores)
             {
                 array_output.emplace_back(string_to_vec(
-                    boost::lexical_cast<std::string>(score)));
+                    boost::lexical_cast<std::string>(it->score())));
             }
         }
 
@@ -695,7 +700,7 @@ void db_session::write_bstring(const std::string& str)
 void db_session::write_bstring(const std::vector<unsigned char>& bdata)
 {
     out_stream_ << '$' << bdata.size() << "\r\n";
-    out_stream_.write(bdata.data(), bdata.size());
+    out_stream_.write(reinterpret_cast<const char*>(bdata.data()), bdata.size());
     out_stream_ << "\r\n" << std::flush;
     do_write();
 }
@@ -725,7 +730,7 @@ void db_session::write_array(const std::vector<std::vector<unsigned char>>&
     for (auto& bdata: array_to_write)
     {
         out_stream_ << '$' << bdata.size() << "\r\n";
-        out_stream_.write(bdata.data(), bdata.size());
+        out_stream_.write(reinterpret_cast<const char*>(bdata.data()), bdata.size());
         out_stream_ << "\r\n";
     }
     out_stream_ << std::flush;
@@ -734,33 +739,33 @@ void db_session::write_array(const std::vector<std::vector<unsigned char>>&
 
 // Error messages
 
-void error_unknown_command(std::string command_name)
+void db_session::error_unknown_command(std::string command_name)
 {
     out_stream_ << "-ERR Unknown command " << command_name << "\r\n"
         << std::flush;
     do_write();
 }
 
-void error_incorrect_number_of_args(std::string command_name)
+void db_session::error_incorrect_number_of_args(std::string command_name)
 {
     out_stream_ << "-ERR Incorrect number of args for " << command_name
         << "\r\n" << std::flush;
     do_write();
 }
 
-void error_key_does_not_exist()
+void db_session::error_key_does_not_exist()
 {
     out_stream_ << "-ERR Key does not exist\r\n";
     do_write();
 }
 
-void error_incorrect_type()
+void db_session::error_incorrect_type()
 {
     out_stream_ << "-ERR Incorrect type\r\n";
     do_write();
 }
 
-void error_syntax_error()
+void db_session::error_syntax_error()
 {
     out_stream_ << "-ERR Syntax error\r\n";
     do_write();

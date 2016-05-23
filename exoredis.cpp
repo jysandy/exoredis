@@ -1,10 +1,10 @@
 #include <memory>
 #include <utility>
-#include <functional>
 #include <set>
 #include <iostream>
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/bind.hpp>
 #include "exostore.hpp"
 #include "db_session.hpp"
 
@@ -18,7 +18,7 @@ public:
     exoredis_server(asio::io_service& io, const tcp::endpoint& endpoint,
         std::string db_path)
         : acceptor_(io, endpoint), socket_(io), db_(db_path),
-          signals_(io, SIGINT)
+          expiry_timer_(io), signals_(io, SIGINT)
     {
         try
         {
@@ -26,12 +26,12 @@ public:
         }
         catch (const exostore::load_error& e)
         {
-            std::cout << e.what << std::endl;
+            std::cout << e.what() << std::endl;
         }
         expiry_timer_.expires_from_now(boost::posix_time::seconds(2));
-        expiry_timer_.async_wait(std::bind(&exoredis_server::handle_timer,
+        expiry_timer_.async_wait(boost::bind(&exoredis_server::handle_timer,
             this, asio::placeholders::error));
-        signals_.async_wait(std::bind(&exoredis_server::handle_signal, this,
+        signals_.async_wait(boost::bind(&exoredis_server::handle_signal, this,
             asio::placeholders::error, asio::placeholders::signal_number));
         do_accept();
     }
@@ -43,9 +43,9 @@ public:
     void stop()
     {
         expiry_timer_.cancel();
-        for (auto& session: session_set)
+        for (auto session: session_set_)
         {
-            session.stop();
+            session->stop();
         }
         session_set_.clear();
         db_.save();
@@ -63,7 +63,7 @@ private:
             {
                 auto new_session = std::make_shared<db_session>(
                     std::move(socket_), db_, session_set_);
-                session_set_.add(new_session);
+                session_set_.insert(new_session);
                 new_session->start();
             }
 
@@ -76,7 +76,7 @@ private:
     {
         db_.expire_keys();
         expiry_timer_.expires_from_now(boost::posix_time::seconds(2));
-        expiry_timer_.async_wait(std::bind(&exoredis_server::handle_timer,
+        expiry_timer_.async_wait(boost::bind(&exoredis_server::handle_timer,
             this, asio::placeholders::error));
     }
 
@@ -106,7 +106,6 @@ int main(int argc, char** argv)
         asio::io_service io_service;
         exoredis_server server(io_service, tcp::endpoint(tcp::v4(), 15000),
             argv[1]);
-        server.start();
         io_service.run();
     }
     catch (const std::exception& e)

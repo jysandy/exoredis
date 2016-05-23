@@ -7,6 +7,7 @@
 #include <set>
 #include <vector>
 #include <boost/asio.hpp>
+#include <cstddef>
 #include "exostore.hpp"
 
 namespace asio = boost::asio;
@@ -28,7 +29,8 @@ public:
 private:
     typedef std::vector<std::vector<unsigned char>> token_list;
 
-    void handle_command_line(boost::system::error_code ec, std::size_t bytes_transferred);
+    void handle_command_line(const boost::system::error_code& ec,
+        std::size_t bytes_transferred);
     void do_write();
     void handle_write(boost::system::error_code ec);
     void call(token_list command_tokens);
