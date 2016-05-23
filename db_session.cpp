@@ -120,6 +120,10 @@ void db_session::call(db_session::token_list command_tokens)
     {
         zcard_command(command_args);
     }
+    else if (command_name == "ZCOUNT")
+    {
+        zcount_command(command_args);
+    }
     else if (command_name == "ZRANGE")
     {
         zrange_command(command_args);
@@ -149,7 +153,8 @@ void db_session::get_command(db_session::token_list args)
     // Throwing exceptions is expensive. Better to check using a bool if we can.
     if (!db_.key_exists(key))
     {
-        error_key_does_not_exist();
+        write_nullbulk();
+        return;
     }
 
     try
@@ -158,7 +163,7 @@ void db_session::get_command(db_session::token_list args)
     }
     catch (const exostore::key_error&)
     {
-        error_key_does_not_exist(); // Key might have expired after line 155 >_<
+        write_nullbulk(); // Key might have expired after line 155 >_<
     }
     catch (const exostore::type_error&)
     {
@@ -182,51 +187,55 @@ void db_session::set_command(db_session::token_list args)
     long long seconds = 0;
 
     // Parse the command and set flags.
-    try
+    if (args.size() > 2)
     {
-        for (auto it = args.begin() + 3; it != args.end(); it++)
+        try
         {
-            auto option = toupper_string(vec_to_string(*it));
-            if (option == "EX")
+            for (auto it = args.begin() + 2; it != args.end(); it++)
             {
-                seconds = boost::lexical_cast<long long>(
-                    vec_to_string(*(++it)));
-                if (seconds <= 0)
+                auto option = toupper_string(vec_to_string(*it));
+                if (option == "EX")
+                {
+                    seconds = boost::lexical_cast<long long>(
+                        vec_to_string(*(++it)));
+                    if (seconds <= 0)
+                    {
+                        error_syntax_error();
+                        return;
+                    }
+                    ex_set = true;
+                }
+                else if (option == "PX")
+                {
+                    milliseconds = boost::lexical_cast<long long>(
+                        vec_to_string(*(++it)));
+                    if (milliseconds <= 0)
+                    {
+                        error_syntax_error();
+                        return;
+                    }
+                    px_set = true;
+                }
+                else if (option == "XX")
+                {
+                    xx_set = true;
+                }
+                else if (option == "NX")
+                {
+                    nx_set = true;
+                }
+                else
                 {
                     error_syntax_error();
                     return;
                 }
-                ex_set = true;
-            }
-            else if (option == "PX")
-            {
-                milliseconds = boost::lexical_cast<long long>(
-                    vec_to_string(*(++it)));
-                if (milliseconds <= 0)
-                {
-                    error_syntax_error();
-                    return;
-                }
-                px_set = true;
-            }
-            else if (option == "XX")
-            {
-                xx_set = true;
-            }
-            else if (option == "NX")
-            {
-                nx_set = true;
-            }
-            else
-            {
-                error_syntax_error();
             }
         }
-    }
-    catch (const boost::bad_lexical_cast&)
-    {
-        error_syntax_error();
-        return;
+        catch (const boost::bad_lexical_cast&)
+        {
+            error_syntax_error();
+            return;
+        }
     }
 
     if ((px_set && ex_set) || (nx_set && xx_set))
@@ -276,7 +285,7 @@ void db_session::getbit_command(db_session::token_list args)
     {
         auto& value = db_.get<exostore::bstring>(key);
         auto int_offset = boost::lexical_cast<long long>(
-            vec_to_string(value.bdata())
+            vec_to_string(args[1])
         );
 
         if (int_offset < 0)
@@ -288,7 +297,7 @@ void db_session::getbit_command(db_session::token_list args)
         auto byte_offset = int_offset / 8;
         int bit_offset_from_right = 7 - (int_offset % 8);
 
-        if ((byte_offset + 1) >= value.bdata().size())
+        if ((byte_offset) >= value.bdata().size())
         {
             write_integer(0);
             return;
@@ -342,15 +351,16 @@ void db_session::setbit_command(db_session::token_list args)
 
         if (int_offset < 0)
         {
+            std::cout << "Offset error" << std::endl;
             error_syntax_error();
             return;
         }
 
-        auto bit_value = boost::lexical_cast<int>(
+        int bit_value = boost::lexical_cast<int>(
             vec_to_string(args[2])
         );
 
-        if (bit_value != 0 || bit_value != 1)
+        if ((bit_value < 0) || (bit_value > 1))
         {
             error_syntax_error();
             return;
@@ -368,12 +378,17 @@ void db_session::setbit_command(db_session::token_list args)
 
         if (byte_offset >= value.bdata().size())
         {
-            value.bdata().resize(byte_offset, static_cast<unsigned char>(0));
+            value.bdata().resize(byte_offset + 1, static_cast<unsigned char>(0));
         }
 
         unsigned char byte_in_question = value.bdata()[byte_offset];
         int return_value = (byte_in_question << (7 - bit_offset_from_right))
             & static_cast<unsigned char>(0x80u);
+
+        if (return_value != 0)
+        {
+            return_value = 1;
+        }
 
         if (bit_value == 1)
         {
@@ -409,7 +424,7 @@ void db_session::zadd_command(db_session::token_list args)
 {
     if (args.size() < 3)
     {
-        error_incorrect_number_of_args("SET");
+        error_incorrect_number_of_args("ZADD");
         return;
     }
 
@@ -480,7 +495,7 @@ void db_session::zadd_command(db_session::token_list args)
         if (xx_set)
         {
             // Nothing to do here. Bail out early without creating a set.
-            write_nullbulk();
+            write_integer(0);
             return;
         }
         db_.set(key, exostore::zset());
@@ -493,7 +508,7 @@ void db_session::zadd_command(db_session::token_list args)
         if (nx_set && accessed_set.contains(member)
             || xx_set && !accessed_set.contains(member))
         {
-            write_nullbulk();
+            write_integer(0);
             return;
         }
 

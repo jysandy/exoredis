@@ -18,7 +18,7 @@ public:
     exoredis_server(asio::io_service& io, const tcp::endpoint& endpoint,
         std::string db_path)
         : acceptor_(io, endpoint), socket_(io), db_(db_path),
-          expiry_timer_(io), signals_(io, SIGINT)
+          expiry_timer_(io), signals_(io, SIGINT), io_(io)
     {
         try
         {
@@ -50,6 +50,10 @@ public:
         session_set_.clear();
         db_.save();
         acceptor_.close();
+        socket_.close();
+        signals_.cancel();
+        io_.stop();
+        std::cout << "\nStopping server..." << std::endl;
     }
 
 private:
@@ -91,6 +95,7 @@ private:
     std::set<db_session::pointer> session_set_;
     asio::deadline_timer expiry_timer_;
     asio::signal_set signals_;
+    asio::io_service& io_;
 };
 
 int main(int argc, char** argv)
