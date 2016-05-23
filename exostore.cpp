@@ -3,6 +3,7 @@
 
 #include <typeinfo>
 #include <fstream>
+#include <iostream>
 #include <cstddef>
 #include <utility>
 
@@ -115,68 +116,81 @@ void exostore::save()
 void exostore::load()
 {
 
-    // TODO: Add code to check if the path exists.
     std::ifstream in(db_path_, std::ifstream::binary);
-    // Read header.
-    std::vector<unsigned char> header = vec_from_file(in, 5);
-    if (vec_to_string(header) != "EXODB")
+    if (!in.is_open())
     {
-        // TODO: Throw some exception here
+        return;
     }
+    in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
-    // Clear existing keys.
-    map_.clear();
-
-    // Read number of keys.
-    std::size_t num_keys;
-    in.read(reinterpret_cast<char*>(&num_keys), sizeof(num_keys));
-
-    for (std::size_t i = 0; i < num_keys; i++)
+    try
     {
-        // Read the key size.
-        std::size_t key_size;
-        in.read(reinterpret_cast<char*>(&key_size), sizeof(key_size));
-        // Read the key.
-        auto key = vec_from_file(in, key_size);
-        // Read the value marker.
-        auto value_marker = vec_from_file(in, 4);
-        std::string marker_str = vec_to_string(value_marker);
-        if (marker_str == "BSTR")   // Binary string
+        // Read header.
+        std::vector<unsigned char> header = vec_from_file(in, 5);
+        if (vec_to_string(header) != "EXODB")
         {
-            // Read bstring length.
-            std::size_t bstring_size;
-            in.read(reinterpret_cast<char*>(&bstring_size),
-                sizeof(bstring_size));
-            // Read bstring content.
-            auto bstring_content = vec_from_file(in, bstring_size);
-            // Add to database.
-            map_[key] = exostore::bstring(bstring_content);
+            throw exostore::load_error("Bad file format");
         }
-        else if(marker_str == "ZSET")   // Sorted set
+
+        // Clear existing keys.
+        map_.clear();
+
+        // Read number of keys.
+        std::size_t num_keys;
+        in.read(reinterpret_cast<char*>(&num_keys), sizeof(num_keys));
+
+        for (std::size_t i = 0; i < num_keys; i++)
         {
-            // Read size of zset.
-            std::size_t zset_size;
-            in.read(reinterpret_cast<char*>(&zset_size), sizeof(zset_size));
-            // Read score-member pairs into zset.
-            exostore::zset zset;
-            for (std::size_t j = 0; j < zset_size; j++)
+            // Read the key size.
+            std::size_t key_size;
+            in.read(reinterpret_cast<char*>(&key_size), sizeof(key_size));
+            // Read the key.
+            auto key = vec_from_file(in, key_size);
+            // Read the value marker.
+            auto value_marker = vec_from_file(in, 4);
+            std::string marker_str = vec_to_string(value_marker);
+            if (marker_str == "BSTR")   // Binary string
             {
-                // Read score.
-                double score;
-                in.read(reinterpret_cast<char*>(&score), sizeof(score));
-                // Read member size.
-                std::size_t member_size;
-                in.read(reinterpret_cast<char*>(&member_size),
-                    sizeof(member_size));
-                // Read member.
-                auto member = vec_from_file(in, member_size);
-                // Add to zset.
-                zset.add(member, score);
+                // Read bstring length.
+                std::size_t bstring_size;
+                in.read(reinterpret_cast<char*>(&bstring_size),
+                    sizeof(bstring_size));
+                // Read bstring content.
+                auto bstring_content = vec_from_file(in, bstring_size);
+                // Add to database.
+                map_[key] = exostore::bstring(bstring_content);
             }
-            // Add to database.
-            map_[key] = zset;
+            else if(marker_str == "ZSET")   // Sorted set
+            {
+                // Read size of zset.
+                std::size_t zset_size;
+                in.read(reinterpret_cast<char*>(&zset_size), sizeof(zset_size));
+                // Read score-member pairs into zset.
+                exostore::zset zset;
+                for (std::size_t j = 0; j < zset_size; j++)
+                {
+                    // Read score.
+                    double score;
+                    in.read(reinterpret_cast<char*>(&score), sizeof(score));
+                    // Read member size.
+                    std::size_t member_size;
+                    in.read(reinterpret_cast<char*>(&member_size),
+                        sizeof(member_size));
+                    // Read member.
+                    auto member = vec_from_file(in, member_size);
+                    // Add to zset.
+                    zset.add(member, score);
+                }
+                // Add to database.
+                map_[key] = zset;
+            }
         }
     }
+    catch (std::ifstream::failure e)
+    {
+        throw exostore::load_error("Bad file format");
+    }
+
 }
 
 bool exostore::expire_if_needed(const std::vector<unsigned char>& key)

@@ -28,6 +28,13 @@ public:
         type_error() : runtime_error("Value is of the wrong type") {}
     };
 
+    class load_error: public std::runtime_error
+    {
+    public:
+        load_error() : runtime_error("Loading from file failed") {}
+        load_error(std::string msg) : runtime_error(msg) {}
+    }
+
     exostore(std::string file_path);
 
     // Should expire a key if needed.
