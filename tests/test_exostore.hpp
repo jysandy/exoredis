@@ -11,7 +11,7 @@
 struct exo_fixture
 {
 public:
-    exo_fixture() : db("some string")
+    exo_fixture() : db("test.erdb")
     {
         d1 = string_to_vec("some content");
         d2 = string_to_vec("some other content");
@@ -33,7 +33,8 @@ public:
     exostore db;
 };
 
-BOOST_FIXTURE_TEST_CASE(test_exostore_key_exists, exo_fixture)
+// Common to test_exostore_key_exists and test_exostore_load_save.
+void test_key_exists(exostore& db)
 {
     BOOST_CHECK(db.key_exists(k1));
     BOOST_CHECK(db.key_exists(k2));
@@ -46,6 +47,11 @@ BOOST_FIXTURE_TEST_CASE(test_exostore_key_exists, exo_fixture)
     BOOST_CHECK(db.key_exists(k4));
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     BOOST_CHECK(!db.key_exists(k4));
+}
+
+BOOST_FIXTURE_TEST_CASE(test_exostore_key_exists, exo_fixture)
+{
+    test_key_exists(db);
 }
 
 BOOST_FIXTURE_TEST_CASE(test_exostore_is_type, exo_fixture)
@@ -81,6 +87,15 @@ BOOST_FIXTURE_TEST_CASE(test_exostore_get, exo_fixture)
     auto& same_zset = db.get<exostore::zset>(k3);
     BOOST_CHECK_EQUAL(zset.size(), 4);
     BOOST_CHECK(zset.contains_element_score(k4, 3.0));
+}
+
+BOOST_FIXTURE_TEST_CASE(test_exostore_load_save, exo_fixture)
+{
+    db.save();
+    exostore new_db("test.erdb");
+    new_db.load();
+    // new_db should be the same as db.
+    test_key_exists(new_db);
 }
 
 #endif
