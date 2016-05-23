@@ -58,7 +58,55 @@ void exostore::save()
     std::ofstream out(db_path_, std::ofstream::out|std::ofstream::binary);
     auto header = string_to_vec("EXODB");
     out.write(reinterpret_cast<const char*>(header.data()), header.size());
-    
+    const auto bstr_marker = string_to_vec("BSTR");
+    const auto zset_marker = string_to_vec("ZSET");
+    for (const auto& pair: map_)
+    {
+        std::size_t key_size = pair.first.size();
+        out.write(reinterpret_cast<const char*>(&key_size), sizeof(key_size));
+        out.write(reinterpret_cast<const char*>(pair.first.data(),
+            pair.first.size()));
+        if (pair.second.type() == typeid(exostore::bstring))
+        {
+            // Write marker.
+            out.write(reinterpret_cast<const char*>(bstr_marker.data()),
+                bstr_marker.size());
+            auto& bstring = boost::any_cast<exostore::bstring&>(pair.second);
+            // Write bstring length.
+            std::size_t bstring_size = bstring.bdata().size();
+            out.write(reinterpret_cast<const char*>(&bstring_size),
+                sizeof(bstring_size));
+            // Write out the bstring.
+            out.write(reinterpret_cast<const char*>(bstring.bdata().data()),
+                bstring.bdata().size());
+        }
+        else if (pair.second.type() == typeid(exostore::zset))
+        {
+            // Write marker.
+            out.write(reinterpret_cast<const char*>(zset_marker.data()),
+                bstr_marker.size());
+            auto& zset = boost::any_cast<exostore::zset&>(pair.second);
+            // Write size of zset.
+            std::size_t zset_size = zset.size();
+            out.write(reinterpret_cast<const char*>(&zset_size),
+                sizeof(zset_size));
+            // Write out score-member pairs.
+            auto its =  zset.element_range(0, zset_size - 1);
+            for (auto it = its.first; it != its.second; it++)
+            {
+                // Write out score.
+                auto score = it->score();
+                out.write(reinterpret_cast<const char*>(&score), sizeof(score));
+                // Write member size.
+                std::size_t member_size = it->member.size();
+                out.write(reinterpret_cast<const char*>(&member_size),
+                    sizeof(member_size));
+                // Write member contents.
+                out.write(reinterpret_cast<const char*>(it->member.data()),
+                    it->member.size());
+            }
+        }
+    }
 }
 
 void exostore::load()
