@@ -116,7 +116,7 @@ void exostore::load()
 {
 
     std::ifstream in(db_path_, std::ifstream::binary);
-    if (!in.is_open())
+    if (!in.is_open())  // File doesn't exist
     {
         return;
     }
