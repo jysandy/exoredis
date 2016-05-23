@@ -123,6 +123,8 @@ void exostore::load()
     }
     in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
+    // Add the keys to this map first, then copy only if there are no errors.
+    boost::unordered_map<std::vector<unsigned char>, boost::any> temp_map_;
     try
     {
         // Read header.
@@ -132,8 +134,6 @@ void exostore::load()
             throw exostore::load_error("Bad file format");
         }
 
-        // Clear existing keys.
-        map_.clear();
 
         // Read number of keys.
         std::size_t num_keys;
@@ -158,7 +158,7 @@ void exostore::load()
                 // Read bstring content.
                 auto bstring_content = vec_from_file(in, bstring_size);
                 // Add to database.
-                map_[key] = exostore::bstring(bstring_content);
+                temp_map[key] = exostore::bstring(bstring_content);
             }
             else if(marker_str == "ZSET")   // Sorted set
             {
@@ -182,7 +182,7 @@ void exostore::load()
                     zset.add(member, score);
                 }
                 // Add to database.
-                map_[key] = zset;
+                temp_map[key] = zset;
             }
         }
     }
@@ -191,6 +191,7 @@ void exostore::load()
         throw exostore::load_error("Bad file format");
     }
 
+    map_ = std::move(temp_map);
 }
 
 bool exostore::expire_if_needed(const std::vector<unsigned char>& key)
