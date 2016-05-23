@@ -49,7 +49,6 @@ public:
         }
         session_set_.clear();
         db_.save();
-        acceptor_.cancel();
         acceptor_.close();
     }
 
@@ -93,3 +92,28 @@ private:
     asio::deadline_timer expiry_timer_;
     asio::signal_set signals_;
 };
+
+int main(int argc, char** argv)
+{
+    try
+    {
+        if (argc != 2)
+        {
+            std::cerr << "Usage: exoredis <db_path>" << std::endl;
+            return 1;
+        }
+
+        asio::io_service io_service;
+        exoredis_server server(io_service, tcp::endpoint(tcp::v4(), 15000),
+            argv[1]);
+        server.start();
+        io_service.run();
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        return 1;
+    }
+
+    return 0;
+}
