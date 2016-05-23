@@ -17,7 +17,8 @@ class exoredis_server
 public:
     exoredis_server(asio::io_service& io, const tcp::endpoint& endpoint,
         std::string db_path)
-        : acceptor_(io, endpoint), socket_(io), db_(db_path)
+        : acceptor_(io, endpoint), socket_(io), db_(db_path),
+          signals_(io, SIGINT)
     {
         try
         {
@@ -28,20 +29,28 @@ public:
             std::cout << e.what << std::endl;
         }
         expiry_timer_.expires_from_now(boost::posix_time::seconds(2));
-        expiry_timer_.async_wait(std::bind(&db_session::handle_timer,
+        expiry_timer_.async_wait(std::bind(&exoredis_server::handle_timer,
             this, asio::placeholders::error));
+        signals_.async_wait(std::bind(&exoredis_server::handle_signal, this,
+            asio::placeholders::error, asio::placeholders::signal_number));
         do_accept();
+    }
+
+    ~exoredis_server()
+    {
     }
 
     void stop()
     {
         expiry_timer_.cancel();
-        for (auto session: session_set)
+        for (auto& session: session_set)
         {
-            session->stop();
+            session.stop();
         }
         session_set_.clear();
         db_.save();
+        acceptor_.cancel();
+        acceptor_.close();
     }
 
 private:
@@ -72,9 +81,15 @@ private:
             this, asio::placeholders::error));
     }
 
+    void handle_signal(boost::system::error_code ec, int signal_number)
+    {
+        stop();
+    }
+
     tcp::acceptor acceptor_;
     tcp::socket socket_;
     exostore db_;
     std::set<db_session::pointer> session_set_;
     asio::deadline_timer expiry_timer_;
+    asio::signal_set signals_;
 };
