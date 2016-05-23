@@ -30,3 +30,15 @@ void operator+=(std::vector<unsigned char>& v, unsigned char c)
 {
     v.push_back(c);
 }
+
+std::vector<unsigned char>&& vec_from_file(std::ifstream& in, std::size_t bytes)
+{
+    char c;
+    std::vector<unsigned char> ret;
+    for (std::size_t i = 0; i < bytes && in; i++)
+    {
+        in.get(c);
+        ret.push_back(static_cast<unsigned char>(c));
+    }
+    return std::move(ret);
+}

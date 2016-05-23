@@ -4,6 +4,9 @@
 #include <vector>
 #include <string>
 #include <locale>
+#include <fstream>
+#include <cstddef>
+#include <utility>
 
 std::string toupper_string(const std::string& input);
 
@@ -13,5 +16,7 @@ std::string vec_to_string(const std::vector<unsigned char>& v);
 
 // Necessary for tokenizing a vector<unsigned char>.
 void operator+=(std::vector<unsigned char>& v, unsigned char c);
+
+std::vector<unsigned char>&& vec_from_file(std::ifstream& std::size_t bytes);
 
 #endif
