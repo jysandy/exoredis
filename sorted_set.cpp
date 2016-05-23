@@ -87,7 +87,7 @@ std::pair<sorted_set::set_type::const_iterator, sorted_set::set_type::const_iter
     auto first = set_.cbegin();
     std::advance(first, start);
     auto second = set_.cbegin();
-    std::advance(second, end);
+    std::advance(second, end + 1);
     return std::pair<set_type::const_iterator, set_type::const_iterator>(
         first, second
     );

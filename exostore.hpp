@@ -33,7 +33,7 @@ public:
     public:
         load_error() : runtime_error("Loading from file failed") {}
         load_error(std::string msg) : runtime_error(msg) {}
-    }
+    };
 
     exostore(std::string file_path);
 

@@ -67,14 +67,15 @@ void exostore::save()
     {
         std::size_t key_size = pair.first.size();
         out.write(reinterpret_cast<const char*>(&key_size), sizeof(key_size));
-        out.write(reinterpret_cast<const char*>(pair.first.data(),
-            pair.first.size()));
+        out.write(reinterpret_cast<const char*>(pair.first.data()),
+            pair.first.size());
         if (pair.second.type() == typeid(exostore::bstring))
         {
             // Write marker.
             out.write(reinterpret_cast<const char*>(bstr_marker.data()),
                 bstr_marker.size());
-            auto& bstring = boost::any_cast<exostore::bstring&>(pair.second);
+            const auto& bstring = boost::any_cast<const exostore::bstring&>(
+                pair.second);
             // Write bstring length.
             std::size_t bstring_size = bstring.bdata().size();
             out.write(reinterpret_cast<const char*>(&bstring_size),
@@ -87,8 +88,8 @@ void exostore::save()
         {
             // Write marker.
             out.write(reinterpret_cast<const char*>(zset_marker.data()),
-                bstr_marker.size());
-            auto& zset = boost::any_cast<exostore::zset&>(pair.second);
+                zset_marker.size());
+            const auto& zset = boost::any_cast<const exostore::zset&>(pair.second);
             // Write size of zset.
             std::size_t zset_size = zset.size();
             out.write(reinterpret_cast<const char*>(&zset_size),
@@ -101,12 +102,12 @@ void exostore::save()
                 auto score = it->score();
                 out.write(reinterpret_cast<const char*>(&score), sizeof(score));
                 // Write member size.
-                std::size_t member_size = it->member.size();
+                std::size_t member_size = it->member().size();
                 out.write(reinterpret_cast<const char*>(&member_size),
                     sizeof(member_size));
                 // Write member contents.
-                out.write(reinterpret_cast<const char*>(it->member.data()),
-                    it->member.size());
+                out.write(reinterpret_cast<const char*>(it->member().data()),
+                    member_size);
             }
         }
     }
@@ -123,16 +124,15 @@ void exostore::load()
     in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
     // Add the keys to this map first, then copy only if there are no errors.
-    boost::unordered_map<std::vector<unsigned char>, boost::any> temp_map_;
+    boost::unordered_map<std::vector<unsigned char>, boost::any> temp_map;
     try
     {
         // Read header.
-        std::vector<unsigned char> header = vec_from_file(in, 5);
+        std::vector<unsigned char> header = std::move(vec_from_file(in, 5));
         if (vec_to_string(header) != "EXODB")
         {
-            throw exostore::load_error("Bad file format");
+            throw exostore::load_error("Incorrect file header");
         }
-
 
         // Read number of keys.
         std::size_t num_keys;
@@ -144,9 +144,9 @@ void exostore::load()
             std::size_t key_size;
             in.read(reinterpret_cast<char*>(&key_size), sizeof(key_size));
             // Read the key.
-            auto key = vec_from_file(in, key_size);
+            auto key = std::move(vec_from_file(in, key_size));
             // Read the value marker.
-            auto value_marker = vec_from_file(in, 4);
+            auto value_marker = std::move(vec_from_file(in, 4));
             std::string marker_str = vec_to_string(value_marker);
             if (marker_str == "BSTR")   // Binary string
             {
@@ -155,7 +155,8 @@ void exostore::load()
                 in.read(reinterpret_cast<char*>(&bstring_size),
                     sizeof(bstring_size));
                 // Read bstring content.
-                auto bstring_content = vec_from_file(in, bstring_size);
+                auto bstring_content = std::move(vec_from_file(in,
+                    bstring_size));
                 // Add to database.
                 temp_map[key] = exostore::bstring(bstring_content);
             }
@@ -176,7 +177,7 @@ void exostore::load()
                     in.read(reinterpret_cast<char*>(&member_size),
                         sizeof(member_size));
                     // Read member.
-                    auto member = vec_from_file(in, member_size);
+                    auto member = std::move(vec_from_file(in, member_size));
                     // Add to zset.
                     zset.add(member, score);
                 }

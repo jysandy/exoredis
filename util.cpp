@@ -31,7 +31,7 @@ void operator+=(std::vector<unsigned char>& v, unsigned char c)
     v.push_back(c);
 }
 
-std::vector<unsigned char>&& vec_from_file(std::ifstream& in, std::size_t bytes)
+std::vector<unsigned char> vec_from_file(std::ifstream& in, std::size_t bytes)
 {
     char c;
     std::vector<unsigned char> ret;

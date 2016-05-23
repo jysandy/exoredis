@@ -34,7 +34,7 @@ public:
 };
 
 // Common to test_exostore_key_exists and test_exostore_load_save.
-void test_key_exists(exostore& db)
+/*void test_key_exists(exostore& db)
 {
     BOOST_CHECK(db.key_exists(k1));
     BOOST_CHECK(db.key_exists(k2));
@@ -47,11 +47,21 @@ void test_key_exists(exostore& db)
     BOOST_CHECK(db.key_exists(k4));
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     BOOST_CHECK(!db.key_exists(k4));
-}
+}*/
 
 BOOST_FIXTURE_TEST_CASE(test_exostore_key_exists, exo_fixture)
 {
-    test_key_exists(db);
+    BOOST_CHECK(db.key_exists(k1));
+    BOOST_CHECK(db.key_exists(k2));
+    BOOST_CHECK(db.key_exists(k3));
+    auto k4 = string_to_vec("some key");        // This should exist
+    BOOST_CHECK(db.key_exists(k4));
+    k4 = string_to_vec("nonsense");             // This shouldn't
+    BOOST_CHECK(!db.key_exists(k4));
+    db.set(k4, exostore::bstring(d1, 1000));     // Should expire in a second
+    BOOST_CHECK(db.key_exists(k4));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    BOOST_CHECK(!db.key_exists(k4));
 }
 
 BOOST_FIXTURE_TEST_CASE(test_exostore_is_type, exo_fixture)
@@ -95,7 +105,26 @@ BOOST_FIXTURE_TEST_CASE(test_exostore_load_save, exo_fixture)
     exostore new_db("test.erdb");
     new_db.load();
     // new_db should be the same as db.
-    test_key_exists(new_db);
+    BOOST_CHECK(new_db.key_exists(k1));
+    BOOST_CHECK(new_db.key_exists(k2));
+    BOOST_CHECK(new_db.key_exists(k3));
+
+    auto& val = new_db.get<exostore::bstring>(k1);
+    BOOST_CHECK(val.bdata() == d1);
+
+    val = new_db.get<exostore::bstring>(k2);
+    BOOST_CHECK(val.bdata() == d2);
+
+    BOOST_CHECK_THROW(new_db.get<exostore::bstring>(k3),
+        exostore::type_error);
+
+    BOOST_CHECK_THROW(new_db.get<exostore::bstring>(string_to_vec("hue")),
+        exostore::key_error);
+
+    auto& zset = new_db.get<exostore::zset>(k3);
+    BOOST_CHECK(zset.contains_element_score(d1, 1.0));
+    BOOST_CHECK(zset.contains_element_score(d2, 2.0));
+    BOOST_CHECK(zset.contains_element_score(d3, 3.0));
 }
 
 #endif
