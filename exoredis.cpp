@@ -19,6 +19,14 @@ public:
         std::string db_path)
         : acceptor_(io, endpoint), socket_(io), db_(db_path)
     {
+        try
+        {
+            db_.load();
+        }
+        catch (const exostore::load_error& e)
+        {
+            std::cout << e.what << std::endl;
+        }
         expiry_timer_.expires_from_now(boost::posix_time::seconds(2));
         expiry_timer_.async_wait(std::bind(&db_session::handle_timer,
             this, asio::placeholders::error));

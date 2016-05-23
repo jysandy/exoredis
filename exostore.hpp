@@ -53,9 +53,9 @@ public:
     void expire_keys();
 
     void save();
+    void load();
 
 private:
-    void load();
     // Returns true if the key was expired.
     bool expire_if_needed(const std::vector<unsigned char>& key);
     std::string db_path_;

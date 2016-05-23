@@ -10,7 +10,6 @@
 exostore::exostore(std::string file_path)
     : db_path_(file_path)
 {
-    load();
 }
 
 bool exostore::key_exists(const std::vector<unsigned char>& key)
