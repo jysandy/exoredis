@@ -15,7 +15,7 @@ def connection(request):
     return reader, writer, loop
 
 
-@pytest.fixture(params=[32, 128, int(3.2e7), int(6.4e7)])
+@pytest.fixture(params=[32, 128, 2048])
 def bstr_size(request):
     return request.param
 
