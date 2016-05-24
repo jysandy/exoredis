@@ -2,7 +2,7 @@ import asyncio
 import random
 
 
-def run_command(command, reader, writer, loop):
+def run_command(cmd_list, reader, writer, loop):
     ''' Runs a command and reads and parses the response into a Python object.
         command should be a sequence of bytes.
     '''
@@ -17,8 +17,7 @@ def run_command(command, reader, writer, loop):
             response_length = int(response_length[:-2])
             if response_length == -1:
                 return None         # Nullbulk
-            print(response_length)
-            response_string = await reader.read(response_length)
+            response_string = await reader.readexactly(response_length)
             await reader.read(2)    # Discard \r\n
             return response_string
         elif marker == b':':
@@ -36,11 +35,11 @@ def run_command(command, reader, writer, loop):
                 ret_array.append(response_string)
             return ret_array
 
-    async def exo_client(command, reader, writer):
-        writer.write(command + b'\r\n')
+    async def exo_client(cmd_list, reader, writer):
+        writer.write(b' '.join(cmd_list) + b'\r\n')
         return await read_response(reader)
 
-    return loop.run_until_complete(exo_client(command, reader, writer))
+    return loop.run_until_complete(exo_client(cmd_list, reader, writer))
 
 
 def random_bytes(length):
@@ -56,19 +55,38 @@ def test_get_set(connection, bstr_size):
     reader, writer, loop = connection
     key = random_bytes(bstr_size)
     value = random_bytes(bstr_size)
-    response = run_command(b' '.join([b'SET', key, value]), reader, writer,
+    response = run_command([b'SET', key, value], reader, writer,
                            loop)
     assert response == '+OK'
-    response = run_command(b' '.join([b'GET', key]), reader, writer, loop)
-    print(len(response))
+    response = run_command([b'GET', key], reader, writer, loop)
     assert response == value
 
     value = random_bytes(bstr_size)
     cmd_list = [b'SET', key, value, b'NX']
-    response = run_command(b' '.join(cmd_list), reader, writer, loop)
+    response = run_command(cmd_list, reader, writer, loop)
     assert response == None
 
     key = random_bytes(bstr_size)
     cmd_list = [b'SET', key, value, b'XX']
-    response = run_command(b' '.join(cmd_list), reader, writer, loop)
+    response = run_command(cmd_list, reader, writer, loop)
     assert response == None
+
+
+def test_getbit_setbit(connection, bstr_size):
+    reader, writer, loop = connection
+    key = random_bytes(bstr_size)
+    value = random_bytes(bstr_size)
+    response = run_command([b'SET', key, value], reader, writer,
+                           loop)
+    assert response == '+OK'
+
+    boffset = random.randint(0, len(value) * 8 + 100)
+    prev_bit = run_command([b'GETBIT', key, str(boffset).encode()], reader,
+                           writer, loop)
+    new_bit = random.choice([0, 1])
+    response = run_command([b'SETBIT', key, str(boffset).encode(),
+                            str(new_bit).encode()], reader, writer, loop)
+    assert response == prev_bit
+    response = run_command([b'GETBIT', key, str(boffset).encode()], reader,
+                           writer, loop)
+    assert response == new_bit
