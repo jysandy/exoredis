@@ -63,6 +63,7 @@ private:
     void error_key_does_not_exist();
     void error_incorrect_type();
     void error_syntax_error();
+    void error_custom(const std::string& msg);
 
     tcp::socket socket_;
     exostore& db_;

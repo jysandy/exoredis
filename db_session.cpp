@@ -52,8 +52,19 @@ void db_session::handle_command_line(const boost::system::error_code& ec,
             boost::escaped_list_separator<unsigned char>,
             std::vector<unsigned char>::const_iterator,
             std::vector<unsigned char>> tok(command_string, sep);
-        std::vector<std::vector<unsigned char>> command_tokens(
-            tok.begin(), tok.end());
+        db_session::token_list command_tokens;
+        try
+        {
+            command_tokens = db_session::token_list(
+                tok.begin(), tok.end()
+            );
+        }
+        catch (std::exception& e)
+        {
+            error_custom(std::string("Tokenizing error: ") + e.what());
+            return;
+        }
+
         call(command_tokens);
     }
     else
@@ -173,7 +184,7 @@ void db_session::get_command(db_session::token_list args)
 
 void db_session::set_command(db_session::token_list args)
 {
-    if (args.size() > 4)
+    if (args.size() > 4 || args.size() < 2)
     {
         error_incorrect_number_of_args("SET");
         return;
@@ -783,5 +794,11 @@ void db_session::error_incorrect_type()
 void db_session::error_syntax_error()
 {
     out_stream_ << "-ERR Syntax error\r\n";
+    do_write();
+}
+
+void db_session::error_custom(const std::string& msg)
+{
+    out_stream_ << "-ERR " << msg << "\r\n";
     do_write();
 }
