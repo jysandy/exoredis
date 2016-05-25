@@ -20,7 +20,7 @@ def bstr_size(request):
     return request.param
 
 
-@pytest.fixture()
+@pytest.fixture(scope='session')
 def run_server(request):    # Probably won't work
     proc = subprocess.Popen(['./exoredis', 'ftest.erdb'])
     def fin():

@@ -1,5 +1,8 @@
 import asyncio
 import random
+import pytest
+
+pytestmark = pytest.mark.usefixtures('run_server')
 
 
 def run_command(cmd_list, reader, writer, loop):
