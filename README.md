@@ -74,3 +74,9 @@ It is as simple as:
 ./exoredis <file_name>
 ```
 Ctrl-C will stop the server.
+
+### Code structure
+The entry point is in ``` exoredis.cpp```. This file also contains the ``` exoredis_server``` class -- the fundamental server class of ExoRedis.  
+Logic for handling a connection is in the ``` db_session``` class in ``` db_session.hpp``` and ``` db_session.cpp```. This class is responsible for reading a command, parsing it, calling the DB API to execute the command and writing the response (or error, as the case may be).  
+The ``` exostore``` class is the database class. It implements logic to get, set and expire keys. Data structures are implemented in ``` binary_string``` and ``` sorted_set```. There are also a couple of supporting classes: ``` sorted_set_key``` and ``` sorted_map_key```.  
+Unit tests are located in the ``` unit_tests``` folder. Integration tests are in the ``` integration_tests``` folder.
