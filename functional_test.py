@@ -30,7 +30,7 @@ def run_command(cmd_list, reader, writer, loop):
             for _ in range(array_length):
                 bstr_length = await reader.readline()
                 bstr_length = int(bstr_length[1:-2])
-                response_string = await reader.read(bstr_length)
+                response_string = await reader.readexactly(bstr_length)
                 await reader.read(2)
                 ret_array.append(response_string)
             return ret_array
@@ -90,3 +90,22 @@ def test_getbit_setbit(connection, bstr_size):
     response = run_command([b'GETBIT', key, str(boffset).encode()], reader,
                            writer, loop)
     assert response == new_bit
+
+
+def test_zadd_zcard_zrange(connection, bstr_size):
+    reader, writer, loop = connection
+    key = random_bytes(bstr_size)
+    sm_pairs = []
+    for _ in range(random.randint(0, 10)):
+        score = random.uniform(-10, 10)
+        member = random_bytes(bstr_size)
+        response = run_command([b'ZADD', key, str(score).encode(), member],
+                               reader, writer, loop)
+        assert response == 1
+        sm_pairs.insert((score, member))
+    member_list = [x[1] for x in sorted(sm_pairs, key=lambda x: x[0])]
+    response = run_command([b'ZRANGE', key, str(0).encode(), str(-1).encode()],
+                            reader, writer, loop)
+    assert response == member_list
+    response = run_command([b'ZCARD', key], reader, writer, loop)
+    assert response == len(member_list)
