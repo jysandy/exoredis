@@ -17,6 +17,7 @@ std::string vec_to_string(const std::vector<unsigned char>& v);
 // Necessary for tokenizing a vector<unsigned char>.
 void operator+=(std::vector<unsigned char>& v, unsigned char c);
 
+// Reads a number of bytes from a file and returns them in a vector.
 std::vector<unsigned char> vec_from_file(std::ifstream&, std::size_t bytes);
 
 #endif

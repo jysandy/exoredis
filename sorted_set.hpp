@@ -9,6 +9,25 @@
 #include "sorted_set_key.hpp"
 #include "sorted_map_key.hpp"
 
+
+/*
+ * Represents a sorted set in the database.
+ * It is implemented using both a hash table (boost::unordered_map) and a
+ * balanced binary tree (std::set). The hash table maps members to their scores.
+ * This is used to ensure uniqueness of the members. The binary tree stores the
+ * score-member pairs in the correct sorted order. Both the hash table and the
+ * binary tree keys store pointers to the members, so that the members are
+ * stored only once in memory.
+ *
+ * Many of these methods accept a reference to a member and internally create a
+ * temporary key using its address. Because of this design, the internal use of
+ * pointers is not exposed. When such a temporary key is created, the temporary
+ * key should not take ownership of the member.
+ *
+ * The unordered_map keys (besides the temporary ones) are responsible for
+ * managing the memory of the members. The std::set keys only stoe raw
+ * non-owning pointers to these managed members.
+ */
 class sorted_set
 {
 public:
@@ -21,7 +40,10 @@ public:
 
     sorted_set();
 
+    // Returns true if a member is present, regardless of its score.
     bool contains(const member_type&) const;
+
+    // Returns true if the given score-member pair is present.
     bool contains_element_score(const member_type& m,
         double score) const;
 
@@ -38,8 +60,8 @@ public:
     // Number of elements with min <= score <= max.
     std::size_t count(double min, double max) const;
 
-    // Iterators to the passed indices. Both indices are inclusive.
-    // The end iterator though is exclusive.
+    // Returns iterators to the input indices. Both indices are inclusive.
+    // The end iterator returned is exclusive.
     std::pair<set_type::const_iterator, set_type::const_iterator>
         element_range(std::size_t start, std::size_t end) const;
 

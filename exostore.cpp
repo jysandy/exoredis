@@ -17,8 +17,6 @@ bool exostore::key_exists(const std::vector<unsigned char>& key)
     return map_.count(key) != 0 && !expire_if_needed(key);
 }
 
-
-
 void exostore::expire_keys()
 {
     for (auto it = map_.begin(); it != map_.end(); )
@@ -115,7 +113,6 @@ void exostore::save()
 
 void exostore::load()
 {
-
     std::ifstream in(db_path_, std::ifstream::binary);
     if (!in.is_open())  // File doesn't exist
     {

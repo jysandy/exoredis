@@ -10,6 +10,12 @@
 #include "binary_string.hpp"
 #include "sorted_set.hpp"
 
+
+/*
+ * The fundamental database type. Responsible for managing the database in the
+ * form of a hash table. Exposes functions to get and set data, and to expire
+ * keys if needed.
+ */
 class exostore
 {
 public:
@@ -40,24 +46,32 @@ public:
     // Should expire a key if needed.
     bool key_exists(const std::vector<unsigned char>& key);
 
+    // Checks if a key is of type T
     template <typename T>
     bool is_type(const std::vector<unsigned char>& key);
 
+    // Gets the value of type T stored at key.
     // Should throw if the key does not exist or if it expires.
+    // Should throw if the value is the wrong type.
     template <typename T>
     T& get(const std::vector<unsigned char>& key);
 
+    // Sets the given key to the given value.
     template <typename T>
     void set(const std::vector<unsigned char>& key, const T& value);
 
+    // Removes all expired keys from the hash table/
     void expire_keys();
 
+    // Save to disk.
     void save();
+    // Load from disk.
     void load();
 
 private:
     // Returns true if the key was expired.
     bool expire_if_needed(const std::vector<unsigned char>& key);
+
     std::string db_path_;
     boost::unordered_map<std::vector<unsigned char>, boost::any> map_;
 };

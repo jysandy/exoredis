@@ -8,10 +8,9 @@
 #include "sorted_set_key.hpp"
 
 /*
-Key of the boost::unordered_map of the sorted set. Contians either an
-owning or a non-owning pointer to a member.
+ * Key of the boost::unordered_map of the sorted set. Contians either an
+ * owning or a non-owning pointer to a member.
 */
-
 class sorted_map_key
 {
 public:

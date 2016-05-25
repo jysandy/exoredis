@@ -6,6 +6,11 @@
 
 namespace chrono = std::chrono;
 
+
+/*
+ * Represents a binary-safe string value in the database. It is associated with
+ * an optional expiry time.
+ */
 class binary_string
 {
 public:
@@ -16,7 +21,9 @@ public:
 
     const std::vector<unsigned char>& bdata() const;
     std::vector<unsigned char>& bdata();
+
     bool has_expired() const;
+
 private:
     bool expiry_set_;
     chrono::system_clock::time_point expiry_time_;

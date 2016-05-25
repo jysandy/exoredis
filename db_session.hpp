@@ -14,6 +14,12 @@ namespace asio = boost::asio;
 using boost::asio::ip::tcp;
 
 
+
+/*
+ * Represents a connection to the database.
+ * Responsible for reading commands, parsing them, calling the DB API to run
+ * the commands and writing the response.
+ */
 class db_session
     : public std::enable_shared_from_this<db_session>
 {
@@ -23,7 +29,10 @@ public:
     db_session(tcp::socket socket, exostore& db,
         std::set<db_session::pointer>& session_set);
 
+    // Starts reading data.
     void start();
+
+    // Shuts down and removes this session from the pool.
     void stop();
 
 private:
@@ -31,10 +40,15 @@ private:
 
     void handle_command_line(const boost::system::error_code& ec,
         std::size_t bytes_transferred);
+
+    // Writes out the contents of the write buffer.
     void do_write();
     void handle_write(boost::system::error_code ec);
+
+    // Calls the appropriate command, given a list of tokens.
     void call(token_list command_tokens);
 
+    // Responses
     void write_bstring(const exostore::bstring&);
     void write_bstring(const std::string&);
     void write_bstring(const std::vector<unsigned char>&);

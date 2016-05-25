@@ -25,7 +25,6 @@ std::string vec_to_string(const std::vector<unsigned char>& v)
     return std::string(v.begin(), v.end());
 }
 
-// Necessary for tokenizing a vector<unsigned char>.
 void operator+=(std::vector<unsigned char>& v, unsigned char c)
 {
     v.push_back(c);

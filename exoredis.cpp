@@ -11,7 +11,11 @@
 namespace asio = boost::asio;
 using boost::asio::ip::tcp;
 
-
+/*
+ * The fundamental server class. OWns the database.
+ * Responsible for accepting and managing new connections.
+ * Also runs a timer to expire keys from the database.
+ */
 class exoredis_server
 {
 public:
@@ -20,6 +24,7 @@ public:
         : acceptor_(io, endpoint), socket_(io), db_(db_path),
           expiry_timer_(io), signals_(io, SIGINT), io_(io)
     {
+        std::cout << "Starting server..." << std::endl;
         try
         {
             db_.load();
@@ -34,6 +39,7 @@ public:
         signals_.async_wait(boost::bind(&exoredis_server::handle_signal, this,
             asio::placeholders::error, asio::placeholders::signal_number));
         do_accept();
+        std::cout << "Server started." << std::endl;
     }
 
     ~exoredis_server()
@@ -42,6 +48,7 @@ public:
 
     void stop()
     {
+        std::cout << "\nStopping server..." << std::endl;
         expiry_timer_.cancel();
         for (auto session: session_set_)
         {
@@ -53,7 +60,7 @@ public:
         socket_.close();
         signals_.cancel();
         io_.stop();
-        std::cout << "\nStopping server..." << std::endl;
+        std::cout << "Server stopped." << std::endl;
     }
 
 private:

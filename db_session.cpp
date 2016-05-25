@@ -19,7 +19,6 @@ db_session::db_session(tcp::socket socket, exostore& db,
 {
 }
 
-// Read a line of data..
 void db_session::start()
 {
     asio::async_read_until(socket_, read_buffer_, "\r\n",
@@ -27,7 +26,6 @@ void db_session::start()
             asio::placeholders::error, asio::placeholders::bytes_transferred));
 }
 
-// Shuts down and removes this session from the pool.
 void db_session::stop()
 {
     socket_.close();
@@ -149,7 +147,9 @@ void db_session::call(db_session::token_list command_tokens)
     }
 }
 
-
+/*************
+ * COMMANDS
+ *************/
 
 void db_session::get_command(db_session::token_list args)
 {
@@ -174,7 +174,7 @@ void db_session::get_command(db_session::token_list args)
     }
     catch (const exostore::key_error&)
     {
-        write_nullbulk(); // Key might have expired after line 155 >_<
+        write_nullbulk(); // Key might have expired after line 164 >_<
     }
     catch (const exostore::type_error&)
     {
@@ -315,6 +315,8 @@ void db_session::getbit_command(db_session::token_list args)
         }
 
         unsigned char byte_in_question = value.bdata()[byte_offset];
+        // When bit shifting, we prefer left shift since the fill value for
+        // right shift is not defined for signed data types.
         unsigned char bit_value = (byte_in_question << (7 - bit_offset_from_right))
             & static_cast<unsigned char>(0x80u);
         if (bit_value != 0)
@@ -653,7 +655,7 @@ void db_session::zrange_command(db_session::token_list args)
             vec_to_string(args[2])
         );
 
-        // Convert negative args to zero-based offsets.
+        // Convert negative args to zero-based offsets from the start.
         auto set_length = accessed_set.size();
         if (start < 0)
         {
@@ -712,6 +714,10 @@ void db_session::save_command(db_session::token_list args)
     write_simple_string("OK");
 }
 
+/******************
+ * RESPONSES
+ ******************/
+
 // Writes out binary data as a bulk string.
 void db_session::write_bstring(const exostore::bstring& bstr)
 {
@@ -763,7 +769,9 @@ void db_session::write_array(const std::vector<std::vector<unsigned char>>&
     do_write();
 }
 
-// Error messages
+/*****************
+ * ERROR MESSAGES
+ *****************/
 
 void db_session::error_unknown_command(std::string command_name)
 {
