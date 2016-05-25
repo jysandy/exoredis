@@ -105,7 +105,7 @@ def test_zadd_zcard_zrange(connection, bstr_size):
         response = run_command([b'ZADD', key, str(score).encode(), member],
                                reader, writer, loop)
         assert response == 1
-        sm_pairs.insert((score, member))
+        sm_pairs.append((score, member))
     member_list = [x[1] for x in sorted(sm_pairs, key=lambda x: x[0])]
     response = run_command([b'ZRANGE', key, str(0).encode(), str(-1).encode()],
                             reader, writer, loop)

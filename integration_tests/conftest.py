@@ -1,6 +1,7 @@
 import pytest
 import asyncio
 import subprocess
+from signal import Signals
 
 
 @pytest.fixture(scope='module')
@@ -24,5 +25,5 @@ def bstr_size(request):
 def run_server(request):    # Probably won't work
     proc = subprocess.Popen(['./exoredis', 'ftest.erdb'])
     def fin():
-        proc.send_signal(subprocess.SIGINT)
+        proc.send_signal(Signals.SIGINT)
     request.addfinalizer(fin)
