@@ -46,7 +46,7 @@ def run_command(cmd_list, reader, writer, loop):
 
 
 def random_bytes(length):
-    ''' Returns a quoted random sequence of bytes.'''
+    ''' Returns a random sequence of bytes.'''
     seq = list(range(10))
     seq.extend(list(range(11, 32)))
     seq.extend(list(range(35, 92)))
@@ -112,3 +112,35 @@ def test_zadd_zcard_zrange(connection, bstr_size):
     assert response == member_list
     response = run_command([b'ZCARD', key], reader, writer, loop)
     assert response == len(member_list)
+
+
+def test_zadd_options(connection, bstr_size):
+    reader, writer, loop = connection
+    key = random_bytes(bstr_size)
+    member = random_bytes(bstr_size)
+    score = random.uniform(-10, 10)
+    response = run_command([b'ZADD', key, str(score).encode(), member],
+                           reader, writer, loop)
+    assert response == 1
+    score = random.uniform(-10, 10)
+    response = run_command([b'ZADD', key, b'NX', str(score).encode(), member],
+                           reader, writer, loop)
+    assert response == 0
+    other_member = random_bytes(bstr_size)
+    response = run_command([b'ZADD', key, b'XX', str(score).encode(),
+                            other_member], reader, writer, loop)
+    assert response == 0
+    response = run_command([b'ZADD', key, b'NX', str(score).encode(),
+                            other_member], reader, writer, loop)
+    assert response == 1
+    score = random.uniform(-10, 10)
+    response = run_command([b'ZADD', key, b'XX', b'CH', str(score).encode(),
+                            other_member], reader, writer, loop)
+    assert response == 1
+    prev_score = score
+    score_incr = random.uniform(1, 5)
+    new_score = prev_score + score_incr
+    response = run_command([b'ZADD', key, b'INCR', str(score_incr).encode(),
+                            other_member], reader, writer, loop)
+    response_float = float(response.decode())
+    assert response_float == new_score

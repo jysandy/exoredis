@@ -33,22 +33,6 @@ public:
     exostore db;
 };
 
-// Common to test_exostore_key_exists and test_exostore_load_save.
-/*void test_key_exists(exostore& db)
-{
-    BOOST_CHECK(db.key_exists(k1));
-    BOOST_CHECK(db.key_exists(k2));
-    BOOST_CHECK(db.key_exists(k3));
-    auto k4 = string_to_vec("some key");        // This should exist
-    BOOST_CHECK(db.key_exists(k4));
-    k4 = string_to_vec("nonsense");             // This shouldn't
-    BOOST_CHECK(!db.key_exists(k4));
-    db.set(k4, exostore::bstring(d1, 1000));     // Should expire in a second
-    BOOST_CHECK(db.key_exists(k4));
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    BOOST_CHECK(!db.key_exists(k4));
-}*/
-
 BOOST_FIXTURE_TEST_CASE(test_exostore_key_exists, exo_fixture)
 {
     BOOST_CHECK(db.key_exists(k1));
