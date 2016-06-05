@@ -94,52 +94,47 @@ void db_session::handle_write(boost::system::error_code ec)
 
 // Calls the appropriate command, or writes out an error response if the
 // format is invalid.
-void db_session::call(db_session::token_list command_tokens)
+void db_session::call(const db_session::token_list& command_tokens)
 {
     // Stringify the first token, which is the command name.
     std::string command_name = toupper_string(vec_to_string(command_tokens[0]));
 
-    db_session::token_list command_args(
-        command_tokens.begin() + 1,
-        command_tokens.end()
-    );
-
     // Dispatch on command name.
     if (command_name == "GET")
     {
-        get_command(command_args);
+        get_command(command_tokens);
     }
     else if (command_name == "SET")
     {
-        set_command(command_args);
+        set_command(command_tokens);
     }
     else if (command_name == "GETBIT")
     {
-        getbit_command(command_args);
+        getbit_command(command_tokens);
     }
     else if (command_name == "SETBIT")
     {
-        setbit_command(command_args);
+        setbit_command(command_tokens);
     }
     else if (command_name == "ZADD")
     {
-        zadd_command(command_args);
+        zadd_command(command_tokens);
     }
     else if (command_name == "ZCARD")
     {
-        zcard_command(command_args);
+        zcard_command(command_tokens);
     }
     else if (command_name == "ZCOUNT")
     {
-        zcount_command(command_args);
+        zcount_command(command_tokens);
     }
     else if (command_name == "ZRANGE")
     {
-        zrange_command(command_args);
+        zrange_command(command_tokens);
     }
     else if (command_name == "SAVE")
     {
-        save_command(command_args);
+        save_command(command_tokens);
     }
     else
     {
@@ -151,15 +146,15 @@ void db_session::call(db_session::token_list command_tokens)
  * COMMANDS
  *************/
 
-void db_session::get_command(db_session::token_list args)
+void db_session::get_command(const db_session::token_list& args)
 {
-    if (args.size() != 1)
+    if (args.size() != 2)
     {
         error_incorrect_number_of_args("GET");
         return;
     }
 
-    auto& key = args[0];
+    auto& key = args[1];
 
     // Throwing exceptions is expensive. Better to check using a bool if we can.
     if (!db_.key_exists(key))
@@ -182,9 +177,9 @@ void db_session::get_command(db_session::token_list args)
     }
 }
 
-void db_session::set_command(db_session::token_list args)
+void db_session::set_command(const db_session::token_list& args)
 {
-    if (args.size() > 4 || args.size() < 2)
+    if (args.size() > 5 || args.size() < 3)
     {
         error_incorrect_number_of_args("SET");
         return;
@@ -198,11 +193,11 @@ void db_session::set_command(db_session::token_list args)
     long long seconds = 0;
 
     // Parse the command and set flags.
-    if (args.size() > 2)
+    if (args.size() > 3)
     {
         try
         {
-            for (auto it = args.begin() + 2; it != args.end(); it++)
+            for (auto it = args.begin() + 3; it != args.end(); it++)
             {
                 auto option = toupper_string(vec_to_string(*it));
                 if (option == "EX")
@@ -255,7 +250,7 @@ void db_session::set_command(db_session::token_list args)
         return;
     }
 
-    auto& key = args[0];
+    auto& key = args[1];
     if ((db_.key_exists(key) && nx_set) || (!db_.key_exists(key) && xx_set))
     {
         write_nullbulk();
@@ -264,28 +259,28 @@ void db_session::set_command(db_session::token_list args)
 
     if (ex_set)
     {
-        db_.set(key, exostore::bstring(args[1], 1000 * seconds));
+        db_.set(key, exostore::bstring(args[2], 1000 * seconds));
     }
     else if (px_set)
     {
-        db_.set(key, exostore::bstring(args[1], milliseconds));
+        db_.set(key, exostore::bstring(args[2], milliseconds));
     }
     else
     {
-        db_.set(key, exostore::bstring(args[1]));
+        db_.set(key, exostore::bstring(args[2]));
     }
     write_simple_string("OK");
 }
 
-void db_session::getbit_command(db_session::token_list args)
+void db_session::getbit_command(const db_session::token_list& args)
 {
-    if (args.size() != 2)
+    if (args.size() != 3)
     {
         error_incorrect_number_of_args("GETBIT");
         return;
     }
 
-    auto& key = args[0];
+    auto& key = args[1];
     if (!db_.key_exists(key))
     {
         write_integer(0);
@@ -296,7 +291,7 @@ void db_session::getbit_command(db_session::token_list args)
     {
         auto& value = db_.get<exostore::bstring>(key);
         auto int_offset = boost::lexical_cast<long long>(
-            vec_to_string(args[1])
+            vec_to_string(args[2])
         );
 
         if (int_offset < 0)
@@ -347,9 +342,9 @@ void db_session::getbit_command(db_session::token_list args)
     }
 }
 
-void db_session::setbit_command(db_session::token_list args)
+void db_session::setbit_command(const db_session::token_list& args)
 {
-    if (args.size() != 3)
+    if (args.size() != 4)
     {
         error_incorrect_number_of_args("SETBIT");
         return;
@@ -359,7 +354,7 @@ void db_session::setbit_command(db_session::token_list args)
     try
     {
         auto int_offset = boost::lexical_cast<long long>(
-            vec_to_string(args[1])
+            vec_to_string(args[2])
         );
 
         if (int_offset < 0)
@@ -370,7 +365,7 @@ void db_session::setbit_command(db_session::token_list args)
         }
 
         int bit_value = boost::lexical_cast<int>(
-            vec_to_string(args[2])
+            vec_to_string(args[3])
         );
 
         if ((bit_value < 0) || (bit_value > 1))
@@ -379,7 +374,7 @@ void db_session::setbit_command(db_session::token_list args)
             return;
         }
 
-        auto& key = args[0];
+        auto& key = args[1];
         if (!db_.key_exists(key))
         {
             db_.set(key, exostore::bstring());
@@ -433,9 +428,9 @@ void db_session::setbit_command(db_session::token_list args)
     }
 }
 
-void db_session::zadd_command(db_session::token_list args)
+void db_session::zadd_command(const db_session::token_list& args)
 {
-    if (args.size() < 3)
+    if (args.size() < 4)
     {
         error_incorrect_number_of_args("ZADD");
         return;
@@ -447,9 +442,9 @@ void db_session::zadd_command(db_session::token_list args)
     bool incr_set = false;
 
     // Parse the command and set flags.
-    if (args.size() > 3)    // There aren't any flags otherwise
+    if (args.size() > 4)    // There aren't any flags otherwise
     {
-        for (auto it = args.begin() + 1; it != args.end() - 2; it++)
+        for (auto it = args.begin() + 2; it != args.end() - 2; it++)
         {
             auto option = toupper_string(vec_to_string(*it));
             if (option == "NX")
@@ -481,6 +476,7 @@ void db_session::zadd_command(db_session::token_list args)
         return;
     }
 
+    // Get the score/member pair.
     auto it = args.end() - 2;
     auto score_bstring = *it;
     it++;
@@ -500,7 +496,7 @@ void db_session::zadd_command(db_session::token_list args)
     }
 
     int return_value = 0;
-    auto& key = args[0];
+    auto& key = args[1];
 
     // Create the sorted set if key doesn't exist.
     if (!db_.key_exists(key))
@@ -569,9 +565,9 @@ void db_session::zadd_command(db_session::token_list args)
     }
 }
 
-void db_session::zcard_command(db_session::token_list args)
+void db_session::zcard_command(const db_session::token_list& args)
 {
-    if (args.size() != 1)
+    if (args.size() != 2)
     {
         error_incorrect_number_of_args("ZCARD");
         return;
@@ -579,7 +575,7 @@ void db_session::zcard_command(db_session::token_list args)
 
     try
     {
-        auto& accessed_set = db_.get<exostore::zset>(args[0]);
+        auto& accessed_set = db_.get<exostore::zset>(args[1]);
         write_integer(accessed_set.size());
     }
     catch (const exostore::key_error& )
@@ -592,22 +588,22 @@ void db_session::zcard_command(db_session::token_list args)
     }
 }
 
-void db_session::zcount_command(db_session::token_list args)
+void db_session::zcount_command(const db_session::token_list& args)
 {
-    if (args.size() != 3)
+    if (args.size() != 4)
     {
         error_incorrect_number_of_args("ZCOUNT");
         return;
     }
 
-    auto& key = args[0];
+    auto& key = args[1];
     try
     {
         double min = boost::lexical_cast<double>(
-            vec_to_string(args[1])
+            vec_to_string(args[2])
         );
         double max = boost::lexical_cast<double>(
-            vec_to_string(args[2])
+            vec_to_string(args[3])
         );
         auto& accessed_set = db_.get<exostore::zset>(key);
         write_integer(accessed_set.count(min, max));
@@ -622,22 +618,22 @@ void db_session::zcount_command(db_session::token_list args)
     }
 }
 
-void db_session::zrange_command(db_session::token_list args)
+void db_session::zrange_command(const db_session::token_list& args)
 {
-    if (args.size() < 3 || args.size() > 4)
+    if (args.size() < 4 || args.size() > 5)
     {
         error_incorrect_number_of_args("ZRANGE");
         return;
     }
 
     bool withscores = false;
-    if (args.size() == 4
-        && toupper_string(vec_to_string(args[3])) == "WITHSCORES")
+    if (args.size() == 5
+        && toupper_string(vec_to_string(args[4])) == "WITHSCORES")
     {
         withscores = true;
     }
 
-    auto& key = args[0];
+    auto& key = args[1];
     if (!db_.key_exists(key))
     {
         // Write an empty array.
@@ -649,10 +645,10 @@ void db_session::zrange_command(db_session::token_list args)
     {
         auto& accessed_set = db_.get<exostore::zset>(key);
         auto start = boost::lexical_cast<long long>(
-            vec_to_string(args[1])
+            vec_to_string(args[2])
         );
         auto end = boost::lexical_cast<long long>(
-            vec_to_string(args[2])
+            vec_to_string(args[3])
         );
 
         // Convert negative args to zero-based offsets from the start.
@@ -703,9 +699,9 @@ void db_session::zrange_command(db_session::token_list args)
     }
 }
 
-void db_session::save_command(db_session::token_list args)
+void db_session::save_command(const db_session::token_list& args)
 {
-    if (args.size() != 0)
+    if (args.size() != 1)
     {
         error_incorrect_number_of_args("SAVE");
     }

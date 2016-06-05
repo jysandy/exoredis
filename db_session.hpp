@@ -46,7 +46,7 @@ private:
     void handle_write(boost::system::error_code ec);
 
     // Calls the appropriate command, given a list of tokens.
-    void call(token_list command_tokens);
+    void call(const token_list& command_tokens);
 
     // Responses
     void write_bstring(const exostore::bstring&);
@@ -60,15 +60,15 @@ private:
 
     // Commands
     // A command is responsible for calling do_write to write the response.
-    void get_command(token_list args);
-    void set_command(token_list args);
-    void getbit_command(token_list args);
-    void setbit_command(token_list args);
-    void zadd_command(token_list args);
-    void zcard_command(token_list args);
-    void zcount_command(token_list args);
-    void zrange_command(token_list args);
-    void save_command(token_list args);
+    void get_command(const token_list& args);
+    void set_command(const token_list& args);
+    void getbit_command(const token_list& args);
+    void setbit_command(const token_list& args);
+    void zadd_command(const token_list& args);
+    void zcard_command(const token_list& args);
+    void zcount_command(const token_list& args);
+    void zrange_command(const token_list& args);
+    void save_command(const token_list& args);
 
     // Errors
     // Write error messages as responses
