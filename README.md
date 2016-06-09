@@ -62,10 +62,10 @@ make
 All commands are to be run from the ``` build/``` directory.
 ##### Running the tests
 ``` bash
-./unit_tests/tests      # Unit tests
-activate exoredis       # Skip this if you've already
-                        # activated the env
-py.test                 # Integration tests
+./unit_tests/tests       # Unit tests
+source activate exoredis # Skip this if you've already
+                         # activated the env
+py.test                  # Integration tests
 ```
 There should be zero failures. Please get back to me if any test fails.
 ##### Running ExoRedis
